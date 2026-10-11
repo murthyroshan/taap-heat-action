@@ -156,3 +156,63 @@ def triggered_actions(city: dict, zr: dict) -> list[dict]:
 
 def zone_by_id(city: dict, zone_id: str) -> dict | None:
     return next((z for z in city["zones"] if z["id"] == zone_id), None)
+
+
+ACTION_FIELDS = {"id", "role", "when", "text", "ref"}
+
+
+def validate_city(cfg: dict, require_zones: bool = True) -> list[str]:
+    """Problems that would stop a city plan from running (empty list = valid)."""
+    errs = []
+    for key in ("id", "name", "plan_name", "tiers", "hot_night_c", "roles", "actions"):
+        if key not in cfg:
+            errs.append(f"missing '{key}'")
+    tiers = cfg.get("tiers") or {}
+    try:
+        y, o, r = (float(tiers[k]) for k in ("yellow", "orange", "red"))
+        if not 30 <= y < o < r <= 55:
+            errs.append("tiers must satisfy 30 <= yellow < orange < red <= 55 (deg C)")
+    except (KeyError, TypeError, ValueError):
+        errs.append("tiers needs numeric yellow, orange and red")
+    try:
+        if not 20 <= float(cfg.get("hot_night_c")) <= 40:
+            errs.append("hot_night_c should be between 20 and 40 deg C")
+    except (TypeError, ValueError):
+        errs.append("hot_night_c must be a number")
+    roles = cfg.get("roles") or {}
+    seen = set()
+    for i, a in enumerate(cfg.get("actions") or []):
+        where = f"action {i + 1} ({a.get('id', '?')})"
+        if not isinstance(a, dict) or not ACTION_FIELDS <= set(a):
+            errs.append(f"{where}: needs {sorted(ACTION_FIELDS)}")
+            continue
+        if a["id"] in seen:
+            errs.append(f"{where}: duplicate id")
+        seen.add(a["id"])
+        if not (isinstance(a["id"], str) and a["id"].isalnum() and len(a["id"]) <= 12):
+            errs.append(f"{where}: id must be short and alphanumeric")
+        if a["role"] not in roles:
+            errs.append(f"{where}: role '{a['role']}' is not in roles")
+        when = a["when"] if isinstance(a["when"], dict) else {}
+        if not when or set(when) - {"band", "tier"}:
+            errs.append(f"{where}: 'when' needs 'band' (1-4) and/or 'tier' (yellow/orange/red)")
+        if "band" in when and when["band"] not in (1, 2, 3, 4):
+            errs.append(f"{where}: band must be 1-4")
+        if "tier" in when and when["tier"] not in ("yellow", "orange", "red"):
+            errs.append(f"{where}: tier must be yellow, orange or red")
+        try:
+            a["text"].format(zone="Z", start="S", end="E")
+        except (KeyError, IndexError, ValueError, AttributeError):
+            errs.append(f"{where}: text may only use {{zone}}, {{start}}, {{end}}")
+    if not cfg.get("actions"):
+        errs.append("no actions")
+    if require_zones:
+        zones = cfg.get("zones") or []
+        if not zones:
+            errs.append("no zones")
+        for z in zones:
+            if not {"id", "name", "name_hi", "lat", "lon"} <= set(z):
+                errs.append(f"zone {z.get('id', '?')}: needs id, name, name_hi, lat, lon")
+            elif not (6 <= z["lat"] <= 37 and 68 <= z["lon"] <= 98):
+                errs.append(f"zone {z['id']}: coordinates are outside India")
+    return errs

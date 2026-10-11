@@ -10,6 +10,7 @@ India has 250+ Heat Action Plans. Most sit as PDFs, warn city-wide on temperatur
 - **Plugs into national systems.** A **CAP 1.2** feed (the format India's SACHET alert system ingests) and a printable **Hindi poster** for labour chowks.
 - **Proves itself on history.** Replays and backtests the May–June 2024 Delhi heatwave.
 - **Any city is a config file.** Delhi and Ahmedabad are included.
+- **New city from its plan PDF.** Upload a Heat Action Plan; Amazon Bedrock drafts the config, a validator checks it, and a person reviews it and adds zones before it goes live.
 
 ## Architecture (all on AWS)
 
@@ -35,7 +36,7 @@ EventBridge Scheduler (hourly, IST)
 | Lambda + function URLs | Engine, bot webhook, public dashboard/API, agent |
 | DynamoDB | State and audit trail (on-demand, cents at demo scale) |
 | Amazon Polly | Hindi voice alerts |
-| Amazon Bedrock | Model behind the officer assistant (default: Nova Lite APAC profile) |
+| Amazon Bedrock | Officer assistant model and plan-PDF reader (default: Nova Lite APAC profile) |
 | Strands Agents SDK (open source) | The officer assistant's agent loop and tools |
 | AWS SAM (open source) | Build and deploy |
 | CloudWatch | Logs |
@@ -69,7 +70,7 @@ EventBridge Scheduler (hourly, IST)
 
 ```bash
 pip install pytest boto3
-python -m pytest -q tests                # 16 tests
+python -m pytest -q tests                # 31 tests
 python scripts/local_server.py           # http://localhost:8000 (admin token: "local")
 ```
 

@@ -26,7 +26,7 @@
 4. Workers report back (no water, no shade, work not stopped, someone unwell), and each report reaches the right officer.
 5. A **CAP 1.2 feed** (SACHET's format) and **printable Hindi posters** for labour chowks reach people without smartphones.
 6. A **backtest on the May–June 2024 Delhi heatwave** shows what the plan would have triggered.
-7. Any city is a config file; Delhi and Ahmedabad are included.
+7. Any city is a config file; Delhi and Ahmedabad are included. A new city can start from its plan PDF: Bedrock drafts the config, a validator checks it, and a person approves it.
 
 **Where AWS fits.**
 
@@ -36,7 +36,7 @@
 | Lambda + function URLs | Engine, Telegram webhook, dashboard/API, agent |
 | DynamoDB | State and audit trail |
 | Amazon Polly | Hindi voice |
-| Amazon Bedrock + Strands Agents (open source) | Officer assistant, with read-only tools over live state |
+| Amazon Bedrock + Strands Agents (open source) | Officer assistant with read-only tools over live state; drafting city configs from plan PDFs |
 | AWS SAM (open source) | Infrastructure as code |
 | CloudWatch | Logs |
 
@@ -59,7 +59,7 @@
 | 1:40–1:55 | Worker taps "No water" → officer gets it → Resolved | "Workers can report back. Reports reach the right department." |
 | 1:55–2:15 | Ask the assistant: "Which zones still have open actions?" | "Officers can ask the plan assistant — a Strands agent on Amazon Bedrock that reads live state and doesn't make things up." |
 | 2:15–2:40 | Architecture diagram; console: EventBridge schedule, Lambda logs, DynamoDB items, CAP XML | "All on AWS: EventBridge, Lambda, DynamoDB, Polly, Bedrock, deployed with SAM. A standard CAP feed lets it plug into India's SACHET alerts." |
-| 2:40–3:00 | Live October view: plan tier green, worker band very high; switch city to Ahmedabad; Hindi poster | "Even today, a humid October afternoon is unsafe for heavy work — the temperature-only plan says green. Any city is a config file. 250 plans exist. Let's make them run." |
+| 2:40–3:00 | Live October view: plan tier green, worker band very high; switch city to Ahmedabad; upload a plan PDF and get a draft config; Hindi poster | "Even today, a humid October afternoon is unsafe for heavy work — the temperature-only plan says green. Any city is a config file. 250 plans exist. Let's make them run." |
 
 ## Blog outline (AWS Builder Center)
 

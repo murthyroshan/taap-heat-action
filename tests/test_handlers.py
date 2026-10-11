@@ -231,3 +231,42 @@ def test_cap_identifier_changes_every_run():
     b = cap.build({**snap, "generated_at": "2026-10-11T08:05:00+00:00"}, "live")
     ident = lambda x: x.split("<identifier>")[1].split("<")[0]
     assert ident(a) != ident(b)
+
+
+def _fake_bedrock(monkeypatch, text):
+    import boto3
+
+    class Fake:
+        def converse(self, **kw):
+            doc = kw["messages"][0]["content"][0]["document"]
+            assert doc["format"] == "pdf" and doc["source"]["bytes"].startswith(b"%PDF")
+            return {"output": {"message": {"content": [{"text": text}]}}}
+    monkeypatch.setattr(boto3, "client", lambda *a, **k: Fake())
+
+
+def test_plan_import_drafts_and_validates(monkeypatch):
+    from handlers import agent
+    good = {"id": "jaipur", "name": "Jaipur", "name_hi": "जयपुर", "plan_name": "Jaipur HAP",
+            "tiers": {"yellow": 41, "orange": 43, "red": 45}, "hot_night_c": 31,
+            "roles": {"health": "Health"},
+            "actions": [{"id": "hosp", "role": "health", "when": {"tier": "orange"},
+                         "text": "Alert hospitals in {zone}", "ref": "p.12"}]}
+    _fake_bedrock(monkeypatch, "Here you go:\n```json\n" + json.dumps(good, ensure_ascii=False) + "\n```")
+    out = agent.import_plan(b"%PDF-1.4 fake")
+    assert out["problems"] == [] and out["draft"]["zones"] == []
+    assert any("DRAFT" in n for n in out["draft"]["notes"])
+    _fake_bedrock(monkeypatch, "Sorry, I cannot read this document.")
+    assert "error" in agent.import_plan(b"%PDF-1.4 fake")
+    _fake_bedrock(monkeypatch, '{"id": "x", "tiers": {"yellow": 50, "orange": 40, "red": 45}}')
+    assert agent.import_plan(b"%PDF-1.4 fake")["problems"]
+
+
+def test_plan_import_route_guards(monkeypatch):
+    monkeypatch.setenv("ADMIN_TOKEN", "t0k")
+    st = store.MemoryStore()
+    imp = lambda b64: {"draft": {"id": "x"}, "problems": []}
+    assert api.route("POST", "/api/plan-import", {}, {"pdf_b64": "JVBE"}, st, importer=imp)["statusCode"] == 403
+    huge = "A" * (api.MAX_PDF_B64 + 10)
+    assert api.route("POST", "/api/plan-import", {}, {"token": "t0k", "pdf_b64": huge}, st, importer=imp)["statusCode"] == 400
+    ok = api.route("POST", "/api/plan-import", {}, {"token": "t0k", "pdf_b64": "JVBE"}, st, importer=imp)
+    assert ok["statusCode"] == 200 and json.loads(ok["body"])["draft"]["id"] == "x"

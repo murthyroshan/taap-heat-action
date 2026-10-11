@@ -173,3 +173,18 @@ def test_english_voice_has_no_emoji_and_window_wraps_midnight():
     zone = {"name": "Narela", "name_hi": "नरेला"}
     v = messages.worker_alert(zr, zone, "2024-05-28", "en")["voice"]
     assert all(ord(ch) < 0x2000 for ch in v) and "12 AM" in v
+
+
+def test_bundled_city_plans_are_valid():
+    for c in plan.list_cities():
+        assert plan.validate_city(plan.load_city(c)) == [], c
+
+
+def test_validator_catches_bad_drafts():
+    bad = {"id": "x", "name": "X", "plan_name": "X HAP", "tiers": {"yellow": 45, "orange": 43, "red": 47},
+           "hot_night_c": "warm", "roles": {"health": "Health"},
+           "actions": [{"id": "a", "role": "police", "when": {"band": 7}, "text": "Go to {place}", "ref": "p1"},
+                       {"id": "a", "role": "health", "when": {}, "text": "ok", "ref": "p2"}]}
+    errs = " | ".join(plan.validate_city(bad, require_zones=False))
+    for needle in ("yellow < orange", "hot_night_c", "not in roles", "band must be", "{zone}", "duplicate", "'when' needs"):
+        assert needle in errs, needle

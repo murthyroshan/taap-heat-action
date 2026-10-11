@@ -101,7 +101,64 @@ def answer(question: str, city: str, st=None) -> str:
     return str(agent(question)).strip()
 
 
+IMPORT_PROMPT = """You are converting an Indian city Heat Action Plan (attached PDF) into a machine-readable config.
+Return ONLY one JSON object, no prose, no code fences, with exactly these keys:
+{
+  "id": short lowercase city id (letters only),
+  "name": city name, "name_hi": city name in Hindi (Devanagari),
+  "plan_name": the plan's title and issuing body,
+  "tiers": {"yellow": number, "orange": number, "red": number}   (forecast max temperature thresholds in deg C that trigger each alert level, as written in the plan),
+  "hot_night_c": number (night/minimum temperature the plan treats as dangerous; 30 if the plan gives none),
+  "roles": {"<role_id>": "<department name>"}   (3-6 departments the plan assigns duties to; role ids lowercase letters),
+  "actions": [ {"id": short lowercase letters, "role": one of the role ids,
+                "when": {"tier": "yellow"|"orange"|"red"} or {"band": 1-4},
+                "text": one concrete instruction for a zone; may use {zone}, {start}, {end} placeholders only,
+                "ref": where in the plan this comes from (section or page) } ]   (4-8 of the plan's most important operational actions),
+  "notes": [short strings: anything ambiguous, any threshold you inferred rather than read, and missing pieces]
+}
+Only use thresholds and duties that the plan actually states; if the plan does not state a threshold, put your best reading in "notes" and use IMD heatwave criteria (yellow 40, orange 45, red 47).
+"""
+
+
+def import_plan(pdf: bytes) -> dict:
+    """Draft a city config from a Heat Action Plan PDF. A human must review it before it goes live."""
+    import boto3
+    from heatplan.plan import validate_city
+
+    client = boto3.client("bedrock-runtime", region_name=os.environ.get("AWS_REGION", "ap-south-1"))
+    res = client.converse(
+        modelId=os.environ.get("MODEL_ID", "apac.amazon.nova-lite-v1:0"),
+        messages=[{"role": "user", "content": [
+            {"document": {"format": "pdf", "name": "heat action plan", "source": {"bytes": pdf}}},
+            {"text": IMPORT_PROMPT}]}],
+        inferenceConfig={"maxTokens": 3000, "temperature": 0.1},
+    )
+    text = "".join(c.get("text", "") for c in res["output"]["message"]["content"])
+    start, end = text.find("{"), text.rfind("}")
+    if start < 0 or end <= start:
+        return {"error": "The model did not return a config.", "raw": text[:2000]}
+    try:
+        draft = json.loads(text[start:end + 1])
+    except json.JSONDecodeError as e:
+        return {"error": f"The model returned invalid JSON ({e.msg}).", "raw": text[:2000]}
+    draft.setdefault("timezone", "Asia/Kolkata")
+    draft.setdefault("zones", [])
+    draft.setdefault("alert_min_band", 2)
+    draft.setdefault("actions_min_tier", "yellow")
+    draft["notes"] = list(draft.get("notes") or []) + [
+        "DRAFT extracted automatically from the plan PDF. Verify every threshold and duty against the document, "
+        "then add zones (id, name, name_hi, lat, lon) before publishing."]
+    return {"draft": draft, "problems": validate_city(draft, require_zones=False)}
+
+
 def handler(event, context):
+    if event.get("task") == "import_plan":
+        import base64
+        try:
+            return import_plan(base64.b64decode(event["pdf_b64"]))
+        except Exception as e:
+            print(f"import error: {e!r}")
+            return {"error": "Could not read the plan with the model (check Bedrock access and that the PDF is under 4.5 MB)."}
     question = (event.get("question") or "").strip()[:500]
     city = event.get("city", "delhi")
     if not question:

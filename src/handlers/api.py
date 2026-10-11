@@ -10,6 +10,16 @@ from heatplan import cap, engine, poster, replay, store, weather
 from heatplan.plan import BANDS, list_cities, load_city
 
 ASK_PER_MINUTE = 10
+MAX_PDF_B64 = 4 * 1024 * 1024 * 4 // 3 + 4  # 4 MB PDF; Lambda sync payloads cap at 6 MB
+
+
+def _import_plan(pdf_b64: str) -> dict:
+    import boto3
+    from botocore.config import Config
+    client = boto3.client("lambda", config=Config(read_timeout=100, retries={"max_attempts": 1}))
+    res = client.invoke(FunctionName=os.environ["AGENT_FUNCTION"],
+                        Payload=json.dumps({"task": "import_plan", "pdf_b64": pdf_b64}))
+    return json.loads(res["Payload"].read() or b"{}")
 WEB = os.path.join(os.path.dirname(os.path.dirname(__file__)), "web", "index.html")
 
 
@@ -32,7 +42,7 @@ def _city(q):
     return c
 
 
-def route(method: str, path: str, q: dict, payload: dict, st=None, agent=None):
+def route(method: str, path: str, q: dict, payload: dict, st=None, agent=None, importer=None):
     st = st or store.get_store()
     if method == "GET" and path in ("/", "/index.html"):
         with open(WEB, encoding="utf-8") as fh:
@@ -102,6 +112,16 @@ def route(method: str, path: str, q: dict, payload: dict, st=None, agent=None):
         from handlers.tick import run_city
         return _resp(run_city(_city(payload), st, notify=bool(payload.get("notify", True))))
 
+    if method == "POST" and path == "/api/plan-import":
+        if not _admin_ok(payload):
+            return _resp({"error": "admin token required"}, 403)
+        pdf_b64 = payload.get("pdf_b64") or ""
+        if not pdf_b64 or len(pdf_b64) > MAX_PDF_B64:
+            return _resp({"error": "send a PDF under 4 MB as base64 in pdf_b64"}, 400)
+        if not importer:
+            return _resp({"error": "plan import not configured"}, 503)
+        return _resp(importer(pdf_b64))
+
     if method == "POST" and path == "/api/ask":
         question = (payload.get("question") or "").strip()[:500]
         if not question:
@@ -131,7 +151,9 @@ def handler(event, context):
             return _resp({"error": "invalid json"}, 400)
     from handlers.bot import _invoke_agent
     try:
-        return route(method, path, q, payload, agent=_invoke_agent if os.environ.get("AGENT_FUNCTION") else None)
+        has_agent = bool(os.environ.get("AGENT_FUNCTION"))
+        return route(method, path, q, payload, agent=_invoke_agent if has_agent else None,
+                     importer=_import_plan if has_agent else None)
     except ValueError as e:
         return _resp({"error": str(e)}, 400)
     except Exception as e:

@@ -96,6 +96,13 @@ a{color:var(--accent)}
     <div id="bt"><p class="muted">Loading…</p></div>
   </section>
 
+  <section class="card full">
+    <h2>New city: plan from PDF (admin)</h2>
+    <p class="small muted" style="margin-top:0">Upload a city's Heat Action Plan (PDF, up to 4 MB). Amazon Bedrock drafts the config, which is checked automatically; a person reviews it and adds zones before it goes live.</p>
+    <input type="file" id="pdf" accept="application/pdf"> <button class="primary" id="importBtn">Draft config</button>
+    <div id="importOut" class="small" style="margin-top:10px"></div>
+  </section>
+
   <section class="card full note" id="honesty"></section>
 </main>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
@@ -133,6 +140,7 @@ async function init(){
   $('#runReplay').onclick = runReplay;
   $('#settings').onclick = () => { const t = prompt('Admin token (needed to run a replay):', store.get('taap.token')||''); if(t!==null) store.set('taap.token', t); };
   $('#askForm').onsubmit = ask;
+  $('#importBtn').onclick = importPlan;
   setupCity();
   setInterval(() => mode==='live' && load(), 60000);
 }
@@ -222,6 +230,24 @@ async function loadBacktest(){
       <div class="bt">${b.days.map(d => `<div title="${d.date}: Tmax ${d.tmax}°C · WBGT ${d.peak_wbgt}°C · band ${d.max_band} · ${d.tier}" style="height:${15+85*(d.tmax-minT)/Math.max(1,maxT-minT)}%;background:${BAND_C[d.max_band]};${d.date===b.reference_event.date?'outline:2px solid var(--ink)':''}"></div>`).join('')}</div>
       <p class="note">Bar height = modelled daily Tmax, colour = worst worker band; outlined = reference day. ${esc(b.caveat)}</p>`;
   }catch(e){ $('#bt').innerHTML = `<p class="muted">Backtest unavailable: ${esc(e.message)}</p>`; }
+}
+
+async function importPlan(){
+  const f = $('#pdf').files[0], token = store.get('taap.token'), out = $('#importOut');
+  if(!f){ out.textContent = 'Choose a PDF first.'; return; }
+  if(!token){ out.textContent = 'Set the admin token first (⚙︎).'; return; }
+  if(f.size > 4*1024*1024){ out.textContent = 'PDF must be under 4 MB.'; return; }
+  out.textContent = 'Reading the plan… (up to a minute)'; $('#importBtn').disabled = true;
+  try{
+    const b64 = await new Promise((ok, bad) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1]); r.onerror = bad; r.readAsDataURL(f); });
+    const res = await api('/api/plan-import', {token, pdf_b64:b64});
+    if(res.error){ out.innerHTML = `<p class="open">${esc(res.error)}</p>`; return; }
+    const json = JSON.stringify(res.draft, null, 2);
+    const url = URL.createObjectURL(new Blob([json], {type:'application/json'}));
+    out.innerHTML = (res.problems.length ? `<p class="open">Needs fixing before it can run:</p><ul>${res.problems.map(p=>`<li>${esc(p)}</li>`).join('')}</ul>` : '<p class="done">Valid plan structure. Review the thresholds and duties against the PDF, then add zones.</p>')
+      + `<p><a href="${url}" download="${esc(res.draft.id||'city')}.json">⬇ Download draft config</a></p><pre style="max-height:320px;overflow:auto;background:var(--bg);padding:10px;border-radius:8px">${esc(json)}</pre>`;
+  }catch(e){ out.innerHTML = `<p class="open">Import failed: ${esc(e.message)}</p>`; }
+  finally{ $('#importBtn').disabled = false; }
 }
 
 async function ask(e){
