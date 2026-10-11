@@ -1,0 +1,2 @@
+# Runtime dependencies: none beyond boto3 (in the Lambda runtime).
+# The agent function gets strands-agents from the public Strands Lambda layer.

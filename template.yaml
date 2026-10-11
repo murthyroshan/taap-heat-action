@@ -63,8 +63,9 @@ Resources:
       KeySchema:
         - {AttributeName: pk, KeyType: HASH}
         - {AttributeName: sk, KeyType: RANGE}
-      # Provisioned mode stays inside the always-free tier (25 RCU / 25 WCU).
-      ProvisionedThroughput: {ReadCapacityUnits: 5, WriteCapacityUnits: 5}
+      # On-demand: a replay writes bursts of actions and a ~200 KB weather cache item, which
+      # would be throttled at low provisioned capacity. At demo scale this costs cents.
+      BillingMode: PAY_PER_REQUEST
 
   TickFunction:
     Type: AWS::Serverless::Function

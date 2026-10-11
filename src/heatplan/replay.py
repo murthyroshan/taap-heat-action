@@ -8,10 +8,11 @@ from __future__ import annotations
 
 import os
 
-from . import weather
+from . import store, weather
 from .engine import day_range
 from .plan import TIERS, city_risk, load_city, triggered_actions
 
+FAIL_BACKOFF_S = 600
 FIXTURE_DIR = os.path.join(os.path.dirname(__file__), "replay_data")
 
 
@@ -27,7 +28,14 @@ def archive_series(st, city_id: str) -> dict:
     cached = st.get("CACHE", key)
     if cached:
         return weather.unpack(cached["blob"])
-    raw = weather.fetch_archive_raw(city["zones"], win["start"], win["end"])
+    failed = st.get("CACHE", f"archive_fail#{city_id}")
+    if failed and store.now_ts() - failed["at"] < FAIL_BACKOFF_S:
+        raise weather.WeatherError("historical weather fetch failed recently; backing off")
+    try:
+        raw = weather.fetch_archive_raw(city["zones"], win["start"], win["end"])
+    except weather.WeatherError:
+        st.put("CACHE", f"archive_fail#{city_id}", {"at": store.now_ts()})
+        raise
     series = weather.parse(raw, city["zones"])
     st.put("CACHE", key, {"blob": weather.pack(series)})
     return series

@@ -20,7 +20,16 @@ def _cb(chat, data, name="Ravi"):
 def _live(st):
     city = plan.load_city("delhi")
     series = {z["id"]: synthetic_day(day=engine.today_ist(), tmax=46, tmin=31) for z in city["zones"]}
-    return engine.run("delhi", "live", engine.today_ist(), series, st, notify=False)
+    return engine.run("delhi", "live", engine.today_ist(), series, st, notify=False, now=_noon_today())
+
+
+def _noon_today():
+    from datetime import datetime, timezone
+    return datetime.fromisoformat(engine.today_ist() + "T07:00:00").replace(tzinfo=timezone.utc)
+
+
+def _officer(st, chat, role="all", city="delhi", name="Vikram"):
+    store.save_user(st, chat, {"role": "officer", "city": city, "officer_role": role, "name": name})
 
 
 def test_worker_onboarding_status_and_report(monkeypatch):
@@ -62,7 +71,9 @@ def test_done_button_updates_public_log(monkeypatch):
     _live(st)
     act = store.list_actions(st, "delhi", "live", engine.today_ist())[0]
     data = f"d|delhi|live|{engine.today_ist()}|{act['zone']}|{act['action_id']}"
+    _officer(st, 77)
     Bot(st, tg).handle(_cb(77, data, "Vikram"))
+    assert any(m[0] == "buttons" for m in tg.sent)
     res = api.route("GET", "/api/state", {"city": "delhi"}, {}, st)
     body = json.loads(res["body"])
     done = [a for a in body["actions"] if a["status"] == "done"]
@@ -111,3 +122,57 @@ def test_agent_tools_read_real_state():
     open_acts = json.loads(tools["plan_actions"](city="delhi", status="open"))
     assert open_acts and all(a["status"] == "open" for a in open_acts)
     assert "tiers" in json.loads(tools["plan_text"](city="ahmedabad"))
+
+
+def test_forged_callbacks_are_rejected():
+    st, tg = store.MemoryStore(), FakeTelegram()
+    _live(st)
+    bot = Bot(st, tg)
+    # a stranger tries to become nodal officer without the code
+    bot.handle(_cb(66, "oc|delhi"))
+    bot.handle(_cb(66, "or|all"))
+    assert store.get_user(st, 66) is None
+    # a worker tries to mark an action done / resolve a report
+    store.save_user(st, 67, {"role": "worker", "city": "delhi", "zone": "narela", "lang": "en"})
+    act = store.list_actions(st, "delhi", "live", engine.today_ist())[0]
+    bot.handle(_cb(67, f"d|delhi|live|{engine.today_ist()}|{act['zone']}|{act['action_id']}"))
+    # an officer of another department / city cannot either
+    _officer(st, 68, role="health")
+    other = next(a for a in store.list_actions(st, "delhi", "live", engine.today_ist()) if a["role"] != "health")
+    bot.handle(_cb(68, f"d|delhi|live|{engine.today_ist()}|{other['zone']}|{other['action_id']}"))
+    _officer(st, 69, city="ahmedabad")
+    bot.handle(_cb(69, f"d|delhi|live|{engine.today_ist()}|{act['zone']}|{act['action_id']}"))
+    assert all(a["status"] == "open" for a in store.list_actions(st, "delhi", "live", engine.today_ist()))
+    # malformed data never crashes
+    for data in ("", "d|x", "z|nowhere", "c|atlantis", "l|fr", "r|delhi|2026-01-01|nope", "x"):
+        bot.handle(_cb(70, data))
+
+
+def test_reports_are_rate_limited_and_stale_buttons_restart():
+    st, tg = store.MemoryStore(), FakeTelegram()
+    bot = Bot(st, tg)
+    store.save_user(st, 5, {"role": "worker", "city": "delhi", "zone": "narela", "lang": "en"})
+    bot.handle(_msg(5, "🚱 No drinking water at site"))
+    bot.handle(_msg(5, "🚱 No drinking water at site"))
+    assert len(store.list_reports(st, "delhi", engine.today_ist())) == 1
+    # a zone button pressed after /stop asks to restart instead of crashing
+    st.delete("USER", "5")
+    tg.sent.clear()
+    bot.handle(_cb(5, "z|narela"))
+    assert "/start" in tg.sent[-1][2]
+
+
+def test_failed_history_fetch_backs_off(monkeypatch):
+    from heatplan import replay, weather
+    calls = []
+
+    def boom(*a, **k):
+        calls.append(1)
+        raise weather.WeatherError("429")
+    monkeypatch.setattr(replay, "FIXTURE_DIR", "/nonexistent")
+    monkeypatch.setattr(weather, "fetch_archive_raw", boom)
+    st = store.MemoryStore()
+    for _ in range(3):
+        res = api.route("GET", "/api/backtest", {"city": "delhi"}, {}, st)
+        assert res["statusCode"] == 503
+    assert len(calls) == 1

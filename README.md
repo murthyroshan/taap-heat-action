@@ -33,7 +33,7 @@ EventBridge Scheduler (hourly, IST)
 |---|---|
 | EventBridge Scheduler | Runs the plan every hour |
 | Lambda + function URLs | Engine, bot webhook, public dashboard/API, agent |
-| DynamoDB | State and audit trail (provisioned mode, free tier) |
+| DynamoDB | State and audit trail (on-demand, cents at demo scale) |
 | Amazon Polly | Hindi voice alerts |
 | Amazon Bedrock | Model behind the officer assistant (default: Nova Lite APAC profile) |
 | Strands Agents SDK (open source) | The officer assistant's agent loop and tools |
@@ -98,7 +98,7 @@ Prerequisites: an AWS account (Paid plan recommended; credits still apply), AWS 
 
 **If a function URL returns 403:** some accounts also require `lambda:InvokeFunction` for public function URLs. See the AWS Lambda docs on function URL auth and add the permission to `ApiFunction`/`BotFunction`.
 
-**Cost:** Scheduler, Lambda, DynamoDB (provisioned 5/5) and Polly stay within free tiers at demo scale. Bedrock Nova Lite costs fractions of a cent per question. Set a budget alarm.
+**Cost:** Scheduler, Lambda and Polly stay within free tiers at demo scale; DynamoDB on-demand costs cents. Bedrock Nova Lite costs fractions of a cent per question. Set a budget alarm.
 
 ## Adding a city
 

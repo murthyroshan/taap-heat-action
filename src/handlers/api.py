@@ -82,8 +82,12 @@ def route(method: str, path: str, q: dict, payload: dict, st=None, agent=None):
         win = load_city(city)["replay"]
         if not win["start"] <= day <= win["end"]:
             return _resp({"error": f"date must be within {win['start']}..{win['end']}"}, 400)
+        try:
+            series = replay.archive_series(st, city)
+        except weather.WeatherError as e:
+            print(f"replay: {e}")
+            return _resp({"error": "historical weather unavailable (bundle it with scripts/fetch_replay_data.py)"}, 503)
         engine.reset_day(st, city, "replay", day)
-        series = replay.archive_series(st, city)
         snap = engine.run(city, "replay", day, series, st, notify=bool(payload.get("notify", True)))
         return _resp({"snapshot": snap})
 

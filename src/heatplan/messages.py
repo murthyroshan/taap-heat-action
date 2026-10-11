@@ -43,7 +43,7 @@ def window_hi(start: str, end: str) -> str:
 
 def window_en(start: str, end: str) -> str:
     def f(x):
-        h = int(x[:2])
+        h = int(x[:2]) % 24
         return f"{_h12(x)} {'AM' if h < 12 else 'PM'}"
     return f"{f(start)} to {f(end)}"
 
@@ -86,7 +86,13 @@ def worker_alert(zr: dict, zone: dict, day: str, lang: str, replay: bool = False
         text = (f"{head}\nRisk: {b['label']} (WBGT {zr['peak_wbgt']}°C)\n\n{rule}\n"
                 f"💧 Drink water every 15–20 minutes, even if not thirsty.{night}\n"
                 f"🚨 Dizziness, vomiting, severe headache or fainting: move to shade, cool with water, call {EMERGENCY}.")
-        voice = text
+        if zr["band"] >= 4:
+            rule_v = f"From {when}, stop heavy work. Do light work in shade only."
+        else:
+            rule_v = f"From {when}, every hour work {b['work']} minutes and rest {b['rest']} minutes in shade."
+        voice = (f"Heat alert for {zone['name']}. Risk today: {b['label']}. {rule_v} "
+                 "Drink water every fifteen to twenty minutes. If someone feels dizzy or vomits, "
+                 "move them to shade and call one one two.")
     return {"text": text, "voice": voice}
 
 
@@ -100,14 +106,22 @@ def status_text(zr: dict, zone: dict, day: str, lang: str) -> str:
     return worker_alert(zr, zone, day, lang)["text"]
 
 
-def officer_action(action: dict, city: dict, zone: dict, zr: dict, replay: bool = False) -> str:
+ACTION_LABELS = {"water": "Water points", "break": "Work break", "cool": "Cooling centre",
+                 "hosp": "Hospitals ready", "mobile": "Mobile unit"}
+
+
+def action_label(action_id: str) -> str:
+    return ACTION_LABELS.get(action_id, action_id)
+
+
+def officer_actions(items: list[dict], city: dict, zone: dict, zr: dict, replay: bool = False) -> str:
     tag = "[REPLAY] " if replay else ""
-    return (f"{tag}{TIER_EMOJI[zr['tier']]} ACTION · {city['name']} · {zone['name']}\n\n"
-            f"{action['text_rendered']}\n\n"
-            f"Why: Tmax {zr['tmax']}°C → {zr['tier'].upper()} tier"
-            f"{' (raised: hot night ' + str(zr['night_min']) + '°C)' if zr.get('hot_night') else ''}; "
-            f"WBGT peak {zr['peak_wbgt']}°C at {zr['peak_hour']:02d}:00 → band {zr['band']}.\n"
-            f"Plan: {action['ref']}\n\nTap Done once it is in place. It goes on the public log.")
+    lines = [f"{i}. {a['text_rendered']}\n   Plan: {a['ref']}" for i, a in enumerate(items, 1)]
+    why = (f"Why: Tmax {zr['tmax']}°C → {zr['tier'].upper()} tier"
+           f"{' (raised after a hot night, low ' + str(zr['night_min']) + '°C)' if zr.get('hot_night') else ''}; "
+           f"WBGT peak {zr['peak_wbgt']}°C at {zr['peak_hour']:02d}:00 → worker band {zr['band']}.")
+    return (f"{tag}{TIER_EMOJI[zr['tier']]} PLAN ACTIONS · {city['name']} · {zone['name']}\n\n"
+            + "\n\n".join(lines) + f"\n\n{why}\nTap each button once it is in place. It goes on the public log.")
 
 
 def officer_report(rep: dict, city: dict, zone: dict) -> str:

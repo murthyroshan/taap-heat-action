@@ -22,15 +22,15 @@ def _get(url: str, params: dict) -> list:
     full = url + "?" + urllib.parse.urlencode(params)
     req = urllib.request.Request(full, headers={"User-Agent": "taap-heat-plan/1.0"})
     data = None
-    for attempt in range(3):
+    for attempt in range(2):
         try:
-            with urllib.request.urlopen(req, timeout=30) as resp:
+            with urllib.request.urlopen(req, timeout=20) as resp:
                 data = json.loads(resp.read())
             break
         except urllib.error.HTTPError as e:
             raise WeatherError(f"Open-Meteo HTTP {e.code}: {e.read()[:200]!r}") from e
         except (urllib.error.URLError, TimeoutError) as e:
-            if attempt == 2:
+            if attempt == 1:
                 raise WeatherError(f"Open-Meteo unreachable: {e}") from e
     if isinstance(data, dict) and data.get("error"):
         raise WeatherError(f"Open-Meteo: {data.get('reason')}")

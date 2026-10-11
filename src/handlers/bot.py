@@ -16,6 +16,7 @@ from heatplan.plan import list_cities, load_city, zone_by_id
 from heatplan.telegram import Telegram
 from heatplan.wbgt import IST
 
+REPORT_COOLDOWN_S = 30 * 60
 WELCOME = "🔥 Taap — heat alerts / गर्मी चेतावनी\nभाषा चुनें / Choose language:"
 
 
@@ -77,7 +78,7 @@ class Bot:
                 self.tg.send(chat, self.agent(q, user["city"]))
             return
 
-        if user.get("role") == "worker":
+        if user.get("role") == "worker" and user.get("zone"):
             lang = user.get("lang", "hi")
             if text == messages.STATUS_BUTTON[lang]:
                 return self.send_status(chat, user)
@@ -89,24 +90,28 @@ class Bot:
         self.tg.send(chat, "Send /start to subscribe to heat alerts. / गर्मी चेतावनी के लिए /start भेजें।")
 
     def on_callback(self, cq):
-        chat = cq["message"]["chat"]["id"]
-        mid = cq["message"]["message_id"]
-        data = cq.get("data", "")
+        """Button presses. callback_data can be forged by a modified client, so every
+        privileged action re-checks the sender's stored role and city."""
+        msg = cq.get("message") or {}
+        chat = (msg.get("chat") or {}).get("id")
+        mid = msg.get("message_id")
         who = (cq.get("from") or {}).get("first_name", "officer")
-        parts = data.split("|")
+        parts = (cq.get("data") or "").split("|")
         kind = parts[0]
         user = store.get_user(self.st, chat) or {}
         self.tg.answer(cq["id"])
+        cities = list_cities()
 
-        if kind == "l":  # language chosen -> pick city
+        if kind == "l" and len(parts) == 2 and parts[1] in ("hi", "en"):  # language -> city
             lang = parts[1]
             store.save_user(self.st, chat, {"role": "worker_pending", "lang": lang})
             prompt = "अपना शहर चुनें:" if lang == "hi" else "Choose your city:"
-            self.tg.edit(chat, mid, prompt)
             self.tg.send(chat, prompt, buttons=_grid(
                 [{"text": load_city(c)["name_hi" if lang == "hi" else "name"], "callback_data": f"c|{c}"}
-                 for c in list_cities()]))
-        elif kind == "c":  # city -> pick zone
+                 for c in cities]))
+        elif kind == "c" and len(parts) == 2 and parts[1] in cities:  # city -> zone
+            if user.get("role") not in ("worker_pending", "worker"):
+                return self._restart(chat)
             city = load_city(parts[1])
             lang = user.get("lang", "hi")
             user.update(city=city["id"])
@@ -115,54 +120,92 @@ class Bot:
             self.tg.send(chat, prompt, buttons=_grid(
                 [{"text": z["name_hi" if lang == "hi" else "name"], "callback_data": f"z|{z['id']}"}
                  for z in city["zones"]]))
-        elif kind == "z":
-            lang = user.get("lang", "hi")
-            user.update(role="worker", zone=parts[1], joined=store.now_ts())
-            store.save_user(self.st, chat, user)
+        elif kind == "z" and len(parts) == 2:
+            if user.get("role") not in ("worker_pending", "worker") or user.get("city") not in cities:
+                return self._restart(chat)
             city = load_city(user["city"])
             zone = zone_by_id(city, parts[1])
+            if not zone:
+                return self._restart(chat)
+            lang = user.get("lang", "hi")
+            user.update(role="worker", zone=zone["id"], joined=store.now_ts())
+            store.save_user(self.st, chat, user)
             done = (f"✅ आप {zone['name_hi']} की गर्मी चेतावनी से जुड़ गए। खतरा होने पर हम आवाज़ और संदेश भेजेंगे।"
                     if lang == "hi" else f"✅ Subscribed to heat alerts for {zone['name']}. You'll get a voice note and text when it gets dangerous.")
             self.tg.send(chat, done, keyboard=_keyboard(lang))
             self.send_status(chat, user)
-        elif kind == "oc":
+        elif kind == "oc" and len(parts) == 2 and parts[1] in cities:
+            if user.get("role") not in ("officer_pending", "officer"):
+                return  # only after /officer <code>
             city = load_city(parts[1])
-            user.update(city=city["id"])
+            user.update(role="officer_pending", city=city["id"])
             store.save_user(self.st, chat, user)
             roles = [{"text": label, "callback_data": f"or|{rid}"} for rid, label in city["roles"].items()]
             roles.append({"text": "Nodal officer (all actions)", "callback_data": "or|all"})
             self.tg.send(chat, "Your department:", buttons=_grid(roles, 1))
-        elif kind == "or":
+        elif kind == "or" and len(parts) == 2:
+            if user.get("role") != "officer_pending" or user.get("city") not in cities:
+                return
+            city = load_city(user["city"])
+            if parts[1] not in city["roles"] and parts[1] != "all":
+                return
             user.update(role="officer", officer_role=parts[1], name=who)
             store.save_user(self.st, chat, user)
-            self.tg.send(chat, f"✅ Registered as {parts[1]} officer for {load_city(user['city'])['name']}. "
+            self.tg.send(chat, f"✅ Registered as {parts[1]} officer for {city['name']}. "
                                "Plan actions and worker reports for your department will arrive here. /ask <question> for the plan assistant.")
-        elif kind == "d":  # d|city|mode|date|zone|action
+        elif kind == "d" and len(parts) == 6:  # d|city|mode|date|zone|action
             _, city_id, mode, day, zone, aid = parts
-            item = engine.mark_done(self.st, city_id, mode, day, zone, aid, who)
-            if item:
-                t = datetime.fromtimestamp(item["done_at"], timezone.utc).astimezone(IST).strftime("%H:%M")
-                self.tg.edit(chat, mid, f"✅ DONE by {item['done_by']} at {t} IST\n\n{item['text_rendered']}")
-        elif kind == "r":  # r|city|date|sk
+            item = self.st.get(store.act_pk(city_id, mode, day), f"{zone}#{aid}")
+            if not item or not self._may_handle(user, city_id, item["role"]):
+                return self.tg.send(chat, "Only the responsible officer can mark this action done.")
+            item = engine.mark_done(self.st, city_id, mode, day, zone, aid, user.get("name") or who)
+            t = datetime.fromtimestamp(item["done_at"], timezone.utc).astimezone(IST).strftime("%H:%M")
+            self._mark_button(chat, mid, msg, cq.get("data"), f"✔️ {messages.action_label(aid)} — {item['done_by']} {t}")
+        elif kind == "r" and len(parts) == 4:  # r|city|date|sk
             _, city_id, day, sk = parts
             pk = f"REP#{city_id}#{day}"
             rep = self.st.get(pk, sk)
-            if rep and rep["status"] != "resolved":
-                rep.update(status="resolved", resolved_by=who, resolved_at=store.now_ts())
+            if not rep or not self._may_handle(user, city_id, messages.REPORT_TYPES[rep["type"]]["role"]):
+                return self.tg.send(chat, "Only the responsible officer can resolve this report.")
+            if rep["status"] != "resolved":
+                rep.update(status="resolved", resolved_by=user.get("name") or who, resolved_at=store.now_ts())
                 self.st.put(pk, sk, rep)
-                self.tg.edit(chat, mid, f"✅ RESOLVED by {who}\n{messages.REPORT_TYPES[rep['type']]['en']} · {rep['zone_name']}")
+            self._mark_button(chat, mid, msg, cq.get("data"), f"✔️ Resolved — {rep['resolved_by']}")
+
+    @staticmethod
+    def _may_handle(user, city_id, role) -> bool:
+        return (user.get("role") == "officer" and user.get("city") == city_id
+                and user.get("officer_role") in (role, "all"))
+
+    def _mark_button(self, chat, mid, msg, data, label):
+        rows = (msg.get("reply_markup") or {}).get("inline_keyboard") or []
+        rows = [[{"text": label, "callback_data": "x"} if b.get("callback_data") == data else b for b in row]
+                for row in rows]
+        self.tg.edit_buttons(chat, mid, rows)
+
+    def _restart(self, chat):
+        self.tg.send(chat, "Please start again with /start. / कृपया /start से दोबारा शुरू करें।")
 
     # ---- worker features ------------------------------------------------
     def send_status(self, chat, user):
         lang = user.get("lang", "hi")
+        if user.get("city") not in list_cities():
+            return self._restart(chat)
         snap = store.load_snapshot(self.st, user["city"], "live")
         city = load_city(user["city"])
-        zone = zone_by_id(city, user["zone"])
+        zone = zone_by_id(city, user.get("zone"))
+        if not zone:
+            return self._restart(chat)
         zr = next((z for z in snap["zones"] if z["zone"] == user["zone"]), None) if snap else None
         self.tg.send(chat, messages.status_text(zr, zone, snap["date"] if snap else engine.today_ist(), lang))
 
     def report(self, chat, user, rtype):
         lang = user.get("lang", "hi")
+        last = self.st.get("RATE", f"{chat}#{rtype}")
+        if last and store.now_ts() - last["at"] < REPORT_COOLDOWN_S:
+            self.tg.send(chat, "✅ यह रिपोर्ट पहले ही भेजी जा चुकी है।" if lang == "hi" else "✅ Already reported recently.")
+            return
+        self.st.put("RATE", f"{chat}#{rtype}", {"at": store.now_ts()})
         city = load_city(user["city"])
         zone = zone_by_id(city, user["zone"])
         now = datetime.now(timezone.utc).astimezone(IST)

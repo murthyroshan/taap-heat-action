@@ -141,11 +141,11 @@ function setupCity(){
   const c = CITIES[city()];
   map.fitBounds(L.latLngBounds(c.zones.map(z => [z.lat, z.lon])).pad(0.25));
   $('#rdate').min = c.replay.start; $('#rdate').max = c.replay.end; $('#rdate').value = c.replay.default;
-  $('#honesty').innerHTML = `<b>How to read this.</b> ${c.notes.map(esc).join(' ')} Worker bands use hourly outdoor WBGT (Liljegren model: temperature, humidity, wind, sun) against ACGIH screening limits for heavy, acclimatised work; guidance, not medical advice. Weather: <a href="https://open-meteo.com">Open-Meteo</a> (CC-BY 4.0) — modelled values, not station readings. Replay uses ERA5 reanalysis, which runs below station peaks. Feeds: <a href="/cap.xml?city=${c.id}&mode=${mode}">CAP 1.2 XML</a> (the format India's SACHET system ingests).`;
+  $('#honesty').innerHTML = `<b>How to read this.</b> ${c.notes.map(esc).join(' ')} Worker bands use hourly outdoor WBGT (Liljegren model: temperature, humidity, wind, sun) against ACGIH screening limits for heavy, acclimatised work; guidance, not medical advice. Weather: <a href="https://open-meteo.com">Open-Meteo</a> (CC-BY 4.0) — modelled values, not station readings. Replay uses ERA5 reanalysis, which runs below station peaks. Feeds: <a id="capLink" href="/cap.xml?city=${c.id}&mode=${mode}">CAP 1.2 XML</a> (the format India's SACHET system ingests).`;
   load(); loadBacktest();
 }
 
-function setMode(m){ mode = m; $('#mLive').classList.toggle('on', m==='live'); $('#mReplay').classList.toggle('on', m==='replay'); $('#replayBox').hidden = m!=='replay'; load(); }
+function setMode(m){ mode = m; const cap = document.querySelector('#capLink'); if(cap) cap.href = `/cap.xml?city=${city()}&mode=${mode}`; $('#mLive').classList.toggle('on', m==='live'); $('#mReplay').classList.toggle('on', m==='replay'); $('#replayBox').hidden = m!=='replay'; load(); }
 
 async function runReplay(){
   const token = store.get('taap.token');

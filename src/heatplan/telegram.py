@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import json
 import os
+import time
+import urllib.error
 import urllib.request
 import uuid
 
@@ -24,12 +26,25 @@ class Telegram:
         req = urllib.request.Request(API.format(token=self.token, method=method),
                                      data=json.dumps(payload).encode(),
                                      headers={"Content-Type": "application/json"})
-        try:
-            with urllib.request.urlopen(req, timeout=15) as r:
-                return json.loads(r.read())
-        except urllib.error.HTTPError as e:
-            print(f"telegram {method} failed: {e.code} {e.read()[:300]!r}")
-            return {}
+        for attempt in range(2):
+            try:
+                with urllib.request.urlopen(req, timeout=15) as r:
+                    return json.loads(r.read())
+            except urllib.error.HTTPError as e:
+                body = e.read()[:300]
+                if e.code == 429 and attempt == 0:  # rate limited: wait as told, once
+                    try:
+                        wait = json.loads(body).get("parameters", {}).get("retry_after", 1)
+                    except ValueError:
+                        wait = 1
+                    time.sleep(min(float(wait), 5))
+                    continue
+                print(f"telegram {method} failed: {e.code} {body!r}")
+                return {}
+            except (urllib.error.URLError, TimeoutError) as e:
+                print(f"telegram {method} unreachable: {e}")
+                return {}
+        return {}
 
     def send(self, chat_id, text: str, buttons: list | None = None, keyboard: list | None = None) -> dict:
         payload = {"chat_id": chat_id, "text": text}
@@ -42,6 +57,10 @@ class Telegram:
 
     def edit(self, chat_id, message_id, text: str) -> dict:
         return self.call("editMessageText", {"chat_id": chat_id, "message_id": message_id, "text": text})
+
+    def edit_buttons(self, chat_id, message_id, buttons: list) -> dict:
+        return self.call("editMessageReplyMarkup", {"chat_id": chat_id, "message_id": message_id,
+                                                    "reply_markup": {"inline_keyboard": buttons}})
 
     def answer(self, callback_id: str, text: str = "") -> dict:
         return self.call("answerCallbackQuery", {"callback_query_id": callback_id, "text": text})
@@ -64,4 +83,6 @@ class Telegram:
                 return json.loads(r.read())
         except urllib.error.HTTPError as e:
             print(f"telegram sendVoice failed: {e.code} {e.read()[:300]!r}")
-            return {}
+        except (urllib.error.URLError, TimeoutError) as e:
+            print(f"telegram sendVoice unreachable: {e}")
+        return {}

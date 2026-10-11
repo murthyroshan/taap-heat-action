@@ -91,19 +91,21 @@ def test_engine_creates_actions_alerts_once_and_tracks_done():
     acts = store.list_actions(st, "delhi", "replay", "2024-05-28")
     assert len(acts) == len(city["zones"]) * len(city["actions"])
     assert snap["stats"]["worker_alerts"] == 2
-    # Nodal officer gets everything, disaster officer only disaster actions.
+    # One message per officer per zone; nodal gets every action's button, the DM only disaster ones.
     to_nodal = [m for m in tg.sent if m[0] == "send" and m[1] == "901"]
     to_dm = [m for m in tg.sent if m[0] == "send" and m[1] == "900"]
-    assert len(to_nodal) == len(acts)
-    assert len(to_dm) == sum(1 for a in acts if a["role"] == "disaster")
-    assert all(len(m[3][0][0]["callback_data"]) <= 64 for m in to_nodal)
+    assert len(to_nodal) == len(city["zones"])
+    assert sum(len(m[3]) for m in to_nodal) == len(acts)
+    assert sum(len(m[3]) for m in to_dm) == sum(1 for a in acts if a["role"] == "disaster")
+    assert all(len(row[0]["callback_data"]) <= 64 for m in to_nodal for row in m[3])
+    assert all(len(m[2]) < 4096 for m in tg.sent if m[0] == "send")
     hindi = [m for m in tg.sent if m[1] == "111" and m[0] == "send"][0][2]
     assert "भारी काम बंद" in hindi and "112" in hindi and "REPLAY" in hindi
 
     # Re-running the same day neither duplicates actions nor re-alerts.
     tg.sent.clear()
     snap2 = engine.run("delhi", "replay", "2024-05-28", series, st, engine.Notifier(st, tg))
-    assert snap2["stats"] == {"actions_created": 0, "officer_messages": 0, "worker_alerts": 0}
+    assert snap2["stats"] == {"actions_created": 0, "officer_messages": 0, "worker_alerts": 0, "quiet_hours": False}
 
     done = engine.mark_done(st, "delhi", "replay", "2024-05-28", "narela", "cool", "DM North")
     assert done["status"] == "done" and done["done_by"] == "DM North"
@@ -131,3 +133,43 @@ def test_poster_and_messages_render():
     assert "गर्मी सूचना" in html and "112" in html
     assert messages.window_hi("12:00", "16:00") == "दोपहर 12 बजे से शाम 4 बजे तक"
     assert messages.window_en("09:00", "13:00") == "9 AM to 1 PM"
+
+
+def test_live_mode_is_quiet_at_night_and_skips_finished_windows():
+    from datetime import timedelta
+    from helpers import NOON_IST
+    st, tg = store.MemoryStore(), FakeTelegram()
+    _seed(st)
+    city = plan.load_city("delhi")
+    day = "2026-10-11"
+    series = {z["id"]: synthetic_day(day=day, tmax=46, tmin=31) for z in city["zones"]}
+    night = NOON_IST - timedelta(hours=12)  # 00:30 IST
+    snap = engine.run("delhi", "live", day, series, st, engine.Notifier(st, tg), now=night)
+    assert snap["stats"]["quiet_hours"] and not tg.sent and not store.list_actions(st, "delhi", "live", day)
+    late = NOON_IST + timedelta(hours=9)  # 21:30 IST is quiet too
+    assert engine.run("delhi", "live", day, series, st, engine.Notifier(st, tg), now=late)["stats"]["quiet_hours"]
+    evening = NOON_IST + timedelta(hours=7)  # 19:30 IST: active, but today's danger window has passed
+    snap = engine.run("delhi", "live", day, series, st, engine.Notifier(st, tg), now=evening)
+    assert snap["stats"]["actions_created"] > 0 and snap["stats"]["worker_alerts"] == 0
+    snap = engine.run("delhi", "live", day, series, st, engine.Notifier(st, tg), now=NOON_IST)
+    assert snap["stats"]["worker_alerts"] == 2
+
+
+def test_voice_is_synthesised_once_per_message(monkeypatch):
+    from heatplan import voice
+    calls = []
+    monkeypatch.setattr(voice, "synthesize", lambda text, lang: calls.append(text) or b"mp3")
+    st, tg = store.MemoryStore(), FakeTelegram()
+    for i in range(5):
+        store.save_user(st, 100 + i, {"role": "worker", "city": "delhi", "zone": "narela", "lang": "hi"})
+    city = plan.load_city("delhi")
+    series = {z["id"]: synthetic_day(tmax=47, tmin=33) for z in city["zones"]}
+    engine.run("delhi", "replay", "2024-05-28", series, st, engine.Notifier(st, tg))
+    assert len(calls) == 1 and sum(1 for m in tg.sent if m[0] == "voice") == 5
+
+
+def test_english_voice_has_no_emoji_and_window_wraps_midnight():
+    zr = {"band": 2, "peak_wbgt": 28.0, "start": "22:00", "end": "24:00", "hot_night": False}
+    zone = {"name": "Narela", "name_hi": "नरेला"}
+    v = messages.worker_alert(zr, zone, "2024-05-28", "en")["voice"]
+    assert all(ord(ch) < 0x2000 for ch in v) and "12 AM" in v

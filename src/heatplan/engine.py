@@ -8,39 +8,69 @@ from .plan import city_risk, load_city, triggered_actions, zone_by_id
 from .telegram import Telegram
 from .wbgt import IST
 
+# Live mode only tasks officers and pushes alerts in waking hours (IST), so a
+# new day's snapshot at 00:05 does not wake anyone; the 06:05 run sends them.
+ACTIVE_HOURS = (6, 21)
 
-def today_ist() -> str:
-    return datetime.now(timezone.utc).astimezone(IST).date().isoformat()
+
+def today_ist(now: datetime | None = None) -> str:
+    return (now or datetime.now(timezone.utc)).astimezone(IST).date().isoformat()
+
+
+def is_active(mode: str, now: datetime | None = None) -> bool:
+    if mode != "live":
+        return True
+    h = (now or datetime.now(timezone.utc)).astimezone(IST).hour
+    return ACTIVE_HOURS[0] <= h < ACTIVE_HOURS[1]
+
+
+def done_callback(item: dict) -> str:
+    return f"d|{item['city']}|{item['mode']}|{item['date']}|{item['zone']}|{item['action_id']}"
 
 
 class Notifier:
     def __init__(self, st, tg: Telegram | None = None):
         self.st = st
         self.tg = tg or Telegram()
+        self._user_cache = None
+
+    def _all_users(self):
+        if self._user_cache is None:
+            self._user_cache = store.list_users(self.st)
+        return self._user_cache
 
     def _users(self, city_id, role):
-        return [u for u in store.list_users(self.st) if u.get("city") == city_id and u.get("role") == role]
+        return [u for u in self._all_users() if u.get("city") == city_id and u.get("role") == role]
 
     def officers_for(self, city_id, action_role):
         return [u for u in self._users(city_id, "officer") if u.get("officer_role") in (action_role, "all")]
 
-    def send_action(self, city, action, zr, mode):
-        zone = zone_by_id(city, action["zone"])
-        text = messages.officer_action(action, city, zone, zr, replay=mode == "replay")
-        cb = f"d|{city['id']}|{mode}|{action['date']}|{action['zone']}|{action['action_id']}"
+    def send_zone_actions(self, city, items, zr, mode) -> int:
+        """One message per officer per zone, with a Done button for each of their actions."""
+        zone = zone_by_id(city, zr["zone"])
         sent = 0
-        for o in self.officers_for(city["id"], action["role"]):
-            self.tg.send(o["sk"], text, buttons=[[{"text": "✅ Done", "callback_data": cb}]])
+        for o in self._users(city["id"], "officer"):
+            mine = [a for a in items if o.get("officer_role") in (a["role"], "all")]
+            if not mine:
+                continue
+            text = messages.officer_actions(mine, city, zone, zr, replay=mode == "replay")
+            buttons = [[{"text": f"✅ {messages.action_label(a['action_id'])}", "callback_data": done_callback(a)}]
+                       for a in mine]
+            self.tg.send(o["sk"], text, buttons=buttons)
             sent += 1
         return sent
 
-    def alert_workers(self, city, snap, mode):
+    def alert_workers(self, city, snap, mode, now: datetime | None = None) -> int:
         sent = 0
         alert_pk = f"ALERT#{mode}#{snap['date']}"
+        hour_now = (now or datetime.now(timezone.utc)).astimezone(IST).hour
+        audio_cache: dict[str, bytes | None] = {}
         for u in self._users(city["id"], "worker"):
             zr = next((z for z in snap["zones"] if z["zone"] == u.get("zone")), None)
             if not zr or not zr.get("available") or zr["band"] < city.get("alert_min_band", 1):
                 continue
+            if mode == "live" and zr["end"] and hour_now >= int(zr["end"][:2]):
+                continue  # the dangerous window is already over today
             key = f"{u['sk']}#{zr['zone']}"
             prev = self.st.get(alert_pk, key) or {"band": 0}
             if zr["band"] <= prev["band"]:
@@ -50,9 +80,10 @@ class Notifier:
             lang = u.get("lang", "hi")
             msg = messages.worker_alert(zr, zone, snap["date"], lang, replay=mode == "replay")
             self.tg.send(u["sk"], msg["text"])
-            audio = voice.synthesize(msg["voice"], lang)
-            if audio:
-                self.tg.send_voice(u["sk"], audio, caption="🔊")
+            if msg["voice"] not in audio_cache:  # same zone + band + language -> same audio
+                audio_cache[msg["voice"]] = voice.synthesize(msg["voice"], lang)
+            if audio_cache[msg["voice"]]:
+                self.tg.send_voice(u["sk"], audio_cache[msg["voice"]], caption="🔊")
             sent += 1
         return sent
 
@@ -66,14 +97,20 @@ def reset_day(st, city_id, mode, day):
 
 
 def run(city_id: str, mode: str, day: str, series: dict, st, notifier: Notifier | None = None,
-        notify: bool = True) -> dict:
+        notify: bool = True, now: datetime | None = None) -> dict:
     city = load_city(city_id)
     snap = city_risk(city, series, day)
     snap["mode"] = mode
-    snap["generated_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    snap["generated_at"] = (now or datetime.now(timezone.utc)).isoformat(timespec="seconds")
     store.save_snapshot(st, snap, mode)
 
-    created = []
+    stats = {"actions_created": 0, "officer_messages": 0, "worker_alerts": 0, "quiet_hours": False}
+    if not is_active(mode, now):
+        stats["quiet_hours"] = True
+        snap["stats"] = stats
+        return snap
+
+    created: dict[str, list] = {}
     for zr in snap["zones"]:
         zone = zone_by_id(city, zr["zone"])
         for a in triggered_actions(city, zr):
@@ -85,15 +122,15 @@ def run(city_id: str, mode: str, day: str, series: dict, st, notifier: Notifier 
                 "created_at": store.now_ts(), "done_at": None, "done_by": None,
             }
             if st.put(store.act_pk(city_id, mode, day), f"{zr['zone']}#{a['id']}", item, if_absent=True):
-                created.append(item)
+                created.setdefault(zr["zone"], []).append(item)
+    stats["actions_created"] = sum(len(v) for v in created.values())
 
-    stats = {"actions_created": len(created), "officer_messages": 0, "worker_alerts": 0}
     if notify:
         notifier = notifier or Notifier(st)
         by_zone = {z["zone"]: z for z in snap["zones"]}
-        for item in created:
-            stats["officer_messages"] += notifier.send_action(city, item, by_zone[item["zone"]], mode)
-        stats["worker_alerts"] = notifier.alert_workers(city, snap, mode)
+        for zone_id, items in created.items():
+            stats["officer_messages"] += notifier.send_zone_actions(city, items, by_zone[zone_id], mode)
+        stats["worker_alerts"] = notifier.alert_workers(city, snap, mode, now)
     snap["stats"] = stats
     return snap
 

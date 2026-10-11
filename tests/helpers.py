@@ -1,5 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
+NOON_IST = datetime(2026, 10, 11, 7, 0, tzinfo=timezone.utc)  # 12:30 IST
+
 
 def synthetic_day(day="2024-05-28", tmax=46.0, tmin=33.0, rh_day=20, rh_night=40, sun=900):
     """Hourly UTC rows for the previous evening + the given IST day, shaped like a hot day."""
@@ -32,6 +34,9 @@ class FakeTelegram:
 
     def edit(self, chat_id, message_id, text):
         self.sent.append(("edit", str(chat_id), text, None))
+
+    def edit_buttons(self, chat_id, message_id, buttons):
+        self.sent.append(("buttons", str(chat_id), "", buttons))
 
     def answer(self, cid, text=""):
         self.sent.append(("answer", cid, text, None))
