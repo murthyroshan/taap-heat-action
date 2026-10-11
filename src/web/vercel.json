@@ -1,0 +1,12 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "cleanUrls": true,
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "https://taap-heat-action-api.onrender.com/api/:path*" },
+    { "source": "/cap.xml", "destination": "https://taap-heat-action-api.onrender.com/cap.xml" },
+    { "source": "/poster", "destination": "https://taap-heat-action-api.onrender.com/poster" }
+  ],
+  "headers": [
+    { "source": "/assets/(.*)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=300" }] }
+  ]
+}

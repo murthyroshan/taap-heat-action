@@ -20,6 +20,7 @@ Settings come from environment variables or a `.env` file next to this repo:
 import base64
 import json
 import os
+import secrets
 import sys
 import threading
 import time
@@ -47,7 +48,9 @@ load_env()
 os.environ.setdefault("LOCAL_DB", os.path.join(ROOT, "taap.db"))
 os.environ.setdefault("MODEL_PROVIDER", "groq" if os.environ.get("GROQ_API_KEY") else "ollama")
 os.environ.setdefault("VOICE_ENABLED", "false")  # Amazon Polly needs an AWS account
-os.environ.setdefault("ADMIN_TOKEN", "local")
+if not os.environ.get("ADMIN_TOKEN"):
+    # "local" is fine on your own machine; a public host gets a random token instead (printed in the log)
+    os.environ["ADMIN_TOKEN"] = secrets.token_urlsafe(12) if os.environ.get("RENDER") else "local"
 
 from handlers import agent as agent_mod  # noqa: E402
 from handlers import api  # noqa: E402

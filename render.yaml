@@ -1,0 +1,25 @@
+# Render Blueprint for the backend: API, Telegram bot, hourly plan run and the AI agents.
+# The frontend is served by Vercel (src/web/vercel.json), which forwards /api, /cap.xml and /poster here.
+services:
+  - type: web
+    name: taap-heat-action-api
+    runtime: python
+    plan: free
+    region: singapore
+    buildCommand: pip install -r requirements-local.txt
+    startCommand: python scripts/run_local.py
+    healthCheckPath: /api/meta
+    autoDeploy: true
+    envVars:
+      - key: TELEGRAM_TOKEN
+        sync: false
+      - key: BOT_USERNAME
+        sync: false
+      - key: OFFICER_CODE
+        sync: false
+      - key: ADMIN_TOKEN
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_MODEL
+        value: openai/gpt-oss-120b

@@ -110,6 +110,19 @@ In Telegram, workers send `/start` and pick a city and area. Officers can use th
 
 Differences from the AWS version: no voice notes (Polly needs AWS), and the 2024 replay data is downloaded from Open-Meteo the first time and cached.
 
+### Hosting: Render (backend) and Vercel (frontend)
+
+The Python app runs on Render. Vercel serves the pages in `src/web` and forwards `/api`, `/cap.xml` and `/poster` to Render (see `src/web/vercel.json`), so the browser only talks to the Vercel URL.
+
+1. **Render:** New, Blueprint, pick this repo. `render.yaml` creates the `taap-heat-action-api` service. Fill in `TELEGRAM_TOKEN`, `BOT_USERNAME`, `OFFICER_CODE`, `ADMIN_TOKEN` and `GROQ_API_KEY`. Once deployed, `https://taap-heat-action-api.onrender.com/api/meta` should answer.
+2. **Vercel:** Add New, Project, import this repo, set Root Directory to `src/web`, Framework Preset "Other", no build command. Deploy.
+3. If Render gives the service a different URL, update the three rewrites in `src/web/vercel.json`.
+
+Notes:
+- Stop any local copy of the app before Render starts. Only one process can poll a Telegram bot at a time.
+- Render's free plan sleeps after 15 minutes without traffic, which pauses the hourly run and the bot. A free uptime monitor (for example UptimeRobot) calling `/api/meta` every 10 minutes keeps it awake.
+- The free plan has no persistent disk, so state (subscriptions, actions done, reports) resets when the service restarts. The 2024 replay data is bundled in `src/heatplan/replay_data`, so replays work right away.
+
 ### Static demo on GitHub Pages
 
 ```bash

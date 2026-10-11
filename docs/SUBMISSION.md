@@ -1,11 +1,11 @@
 # Submission kit: Environmental Hacks (Heat and Water track)
 
-We are submitting the **Build It** version: everything runs on one machine with no AWS account, using AWS open source (Strands Agents for the AI agents, AWS SAM for the deployment template).
+We are submitting the **Build It** version: no AWS account (the app is hosted on Render and Vercel), using AWS open source (Strands Agents for the AI agents, AWS SAM for the deployment template).
 
 ## Checklist (one submission per team, before the deadline)
 
 - [ ] **Public GitHub repo.** History falls within the event dates.
-- [ ] **Live link.** GitHub Pages snapshot: run the app, run the 28 May 2024 replay, then `python scripts/export_static.py`, push `docs/` and enable Pages (Settings, Pages, branch `master`, folder `/docs`).
+- [ ] **Live link.** The Vercel URL (frontend), backed by the app on Render. Before submitting, open it, run the 28 May 2024 replay from the Dashboard and check the bot answers. Fallback: the read-only GitHub Pages snapshot from `python scripts/export_static.py`.
 - [ ] **Demo video, 3 minutes or less,** on YouTube (public or unlisted). Check that it plays in a signed-out browser. AWS has to be visible in the video, not only in the writeup: show the Strands agent working and the SAM template.
 - [ ] **Short writeup:** problem, what we built, where AWS fits and the AI tools used (draft below).
 - [ ] **Builder Center blog,** linked in the submission. The top 5 blogs win a prize (outline below).
