@@ -9,8 +9,10 @@ India has 250+ Heat Action Plans. Most sit as PDFs, warn city-wide on temperatur
 - **Listens to the ground.** Workers tap *No water / No shade / Work not stopped / Someone unwell*; reports go to the right officer.
 - **Plugs into national systems.** A **CAP 1.2** feed (the format India's SACHET alert system ingests) and a printable **Hindi poster** for labour chowks.
 - **Proves itself on history.** Replays and backtests the May–June 2024 Delhi heatwave.
-- **Any city is a config file.** Delhi and Ahmedabad are included.
+- **Any city is a config file.** Delhi, Mumbai, Hyderabad, Chennai, Kolkata, Jaipur and Ahmedabad are included (all but Ahmedabad's thresholds are illustrative, from IMD/NDMA criteria).
 - **A page for each audience.** Home, live dashboard, a day-by-day 2024 replay, a Hindi-first workers page (read aloud, WhatsApp share), an officers' console, a public ledger with department scores, plans as readable rules, and the method.
+- **Makes the advice doable.** Nearest drinking water, shade and clinics with walking time (and a warning when the walk itself is too long in that heat); cooling centres officers open appear on the map; a safe shift planner for contractors; stricter limits for new, unacclimatised workers; QR codes on posters.
+- **Saathi, a voice heat companion.** Workers talk to it in Hindi or English through the browser's speech recognition and voice. Emergencies (fainting, vomiting, confusion) go to fixed first-aid rules with tap-to-call 112, never to the model. Otherwise a Strands agent answers with tools that act — today's risk, nearest help, a shift plan, filing a report to the right officer — with a rule-based fallback when no model is available.
 - **New city from its plan PDF.** Upload a Heat Action Plan; Amazon Bedrock drafts the config, a validator checks it, and a person reviews it and adds zones before it goes live.
 
 ## Architecture (all on AWS)
@@ -136,7 +138,7 @@ No code changes are needed.
 ## Data and credits
 
 - **Weather:** [Open-Meteo](https://open-meteo.com) forecast and historical APIs (ERA5), CC-BY 4.0. The free tier is non-commercial.
-- **Maps:** © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors, via [Leaflet](https://leafletjs.com) (BSD-2).
+- **Maps and help points:** © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors (ODbL), via [Leaflet](https://leafletjs.com) (BSD-2). QR codes: qrcodejs (MIT).
 - **WBGT model:** Liljegren et al. (2008), *J. Occup. Environ. Hyg.* 5:645–655.
 - **Work–rest limits:** ACGIH TLV screening criteria for heat stress.
 - **Alert thresholds:**

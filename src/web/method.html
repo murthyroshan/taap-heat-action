@@ -6,7 +6,7 @@
 <title>Method — Taap</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E🔥%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@500;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@500;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/app.css">
 </head>
 <body>
@@ -31,6 +31,16 @@
       <li>Values are modelled, not station readings. The replay uses ERA5 reanalysis, which runs below station peaks.</li>
       <li>IMD recorded 49.9°C at Mungeshpur and Narela on 28 May 2024; the 52.9°C reading was a sensor error and is not used.</li>
       <li>The AI assistant never decides alerts or actions — those are deterministic plan rules. It only answers questions from live data.</li></ul></section>
+  </div>
+  <div class="grid2">
+    <section class="card reveal prose"><h3>Making the advice doable</h3><ul>
+      <li><b>Help nearby:</b> water, shade and clinics from OpenStreetMap, plus cooling centres officers confirm with a location. Walking time assumes a slow 70 m/min; beyond 5–12 minutes (by risk band) the walk itself is flagged as exposure.</li>
+      <li><b>New workers:</b> people in their first ~2 weeks are not acclimatised; we use ACGIH's lower action limits (bands start 2.5–3.5°C earlier).</li>
+      <li><b>Shift planner:</b> fits the needed heavy-work hours into the safest hours first, and compares with a usual 9-to-5.</li></ul></section>
+    <section class="card reveal prose" style="--d:.06s"><h3>Saathi's safety design</h3><ul>
+      <li>Red-flag symptoms (fainting, vomiting, confusion, no sweating, seizures) trigger fixed first-aid steps and tap-to-call 112. This path never uses the AI.</li>
+      <li>Otherwise a Strands agent answers using tools only — it cannot invent places, distances or temperatures.</li>
+      <li>If the model is unavailable, keyword rules call the same tools, so workers always get an answer.</li></ul></section>
   </div>
   <section class="card reveal"><h3>Architecture</h3><img src="assets/architecture.svg" alt="Architecture: EventBridge schedules a Lambda that computes WBGT, stores state in DynamoDB, alerts via Polly and Telegram; a Strands agent on Bedrock answers officers; a public API serves dashboards and the CAP feed." style="width:100%;border-radius:12px;background:#fbfaf8">
     <p class="note">Runs two ways from the same code: on AWS (SAM template: EventBridge, Lambda, DynamoDB, Polly, Bedrock) or on one machine with no AWS account (Strands Agents — AWS open source — on Groq or a local model, SQLite, Telegram long polling).</p></section>

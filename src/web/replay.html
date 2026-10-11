@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E🔥%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@500;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@500;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/app.css">
 </head>
 <body>
@@ -25,8 +25,8 @@
       <input type="range" id="day" class="slider" min="0" max="0" value="0" style="flex:1;min-width:200px" aria-label="Day">
       <b id="dayLabel" style="font-family:'JetBrains Mono',monospace;min-width:110px">—</b>
     </div>
-    <svg id="chart" viewBox="0 0 1000 150" preserveAspectRatio="none" style="width:100%;height:150px;margin-top:12px"></svg>
-    <div class="legend"><span><i style="background:var(--ember2)"></i>daily max temperature (modelled)</span><span><i style="background:var(--b4)"></i>peak WBGT</span><span>| outlined = reference day</span></div>
+    <div id="chart" style="margin-top:14px"></div>
+    <div class="legend"><span><i style="background:#ff9a3c"></i>daily max temperature (modelled)</span><span><i style="background:var(--b4)"></i>peak WBGT</span><span>shaded column = reference day · hover for values</span></div>
   </section>
   <div class="grid2" style="grid-template-columns:minmax(0,1.4fr) minmax(0,1fr)">
     <section class="card reveal"><div id="map" style="height:500px"></div><div class="legend" id="legend"></div></section>
@@ -67,17 +67,14 @@ function draw(){
   if(d.hot_night_zones) story += ` ${d.hot_night_zones} zone(s) had no night-time relief, so the plan escalated.`;
   if(d.date === ref.date) story = '📍 ' + ref.text + ' ' + story;
   T.$('#story').textContent = story; T.$('#story').style.setProperty('--c', bc[d.max_band]);
-  T.$('#cur') && T.$('#cur').setAttribute('x', (idx/(B.days.length-1||1))*1000 - 2);
+  CH && CH.cursor(idx);
 }
+let CH = null;
 function chart(){
-  const ds = B.days, n = ds.length, tmax = ds.map(d=>d.tmax), wb = ds.map(d=>d.peak_wbgt);
-  const lo = Math.min(...wb)-2, hi = Math.max(...tmax)+2, X = i => i/(n-1||1)*1000, Y = v => 145 - (v-lo)/(hi-lo)*135;
-  const path = arr => arr.map((v,i) => `${i?'L':'M'}${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join('');
-  const refI = ds.findIndex(d => d.date === (B.reference_event||{}).date);
-  T.$('#chart').innerHTML = `${refI>=0?`<rect x="${X(refI)-6}" y="0" width="12" height="150" fill="none" stroke="var(--ink)" stroke-dasharray="3 3"/>`:''}
-    <path d="${path(tmax)}" fill="none" stroke="var(--ember2)" stroke-width="2.5" vector-effect="non-scaling-stroke"/>
-    <path d="${path(wb)}" fill="none" stroke="var(--b4)" stroke-width="2.5" vector-effect="non-scaling-stroke"/>
-    <rect id="cur" x="0" y="0" width="4" height="150" fill="var(--ember)" opacity=".8"/>`;
+  const ds = B.days, refI = ds.findIndex(d => d.date === (B.reference_event||{}).date);
+  CH = T.lineChart(T.$('#chart'), {xs: ds.map(d => d.date.slice(5)), ref: refI, height: 200, every: Math.ceil(ds.length/6),
+    series: [{name:'Tmax', ys: ds.map(d => d.tmax), color:'#ff9a3c'}, {name:'WBGT', ys: ds.map(d => d.peak_wbgt), color: T.cssv('--b4')}],
+    tip: i => `<b>${ds[i].date}</b><br>Tmax ${ds[i].tmax}° · WBGT ${ds[i].peak_wbgt}°<br><span style="color:var(--muted)">band ${ds[i].max_band} · ${ds[i].tier} tier</span>`});
 }
 function summary(){
   const s = B.summary;

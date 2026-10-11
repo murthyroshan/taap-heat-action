@@ -12,7 +12,7 @@ import json
 import os
 from datetime import datetime, timezone
 
-from heatplan import engine, messages, store
+from heatplan import engine, messages, plan, store
 from heatplan.plan import list_cities, load_city, zone_by_id
 from heatplan.telegram import Telegram
 from heatplan.wbgt import IST
@@ -63,6 +63,14 @@ class Bot:
             self.tg.send(chat, "Officer registration. Choose your city:", buttons=_grid(
                 [{"text": load_city(c)["name"], "callback_data": f"oc|{c}"} for c in list_cities()]))
             return
+        if text.startswith("/new") and user.get("role") == "worker":
+            user["new_worker"] = not user.get("new_worker")
+            store.save_user(self.st, chat, user)
+            hi = user.get("lang", "hi") == "hi"
+            msg = ("✅ नया-काम मोड चालू: आपके लिए ज़्यादा सावधानी वाली सीमाएँ।" if hi else "✅ New-worker mode on: stricter limits for you.") \
+                if user["new_worker"] else ("नया-काम मोड बंद।" if hi else "New-worker mode off.")
+            self.tg.send(chat, msg)
+            return self.send_status(chat, user)
         if text.startswith("/stop"):
             self.st.delete("USER", str(chat))
             self.tg.send(chat, "Unsubscribed. / सदस्यता बंद। /start to join again.")
@@ -202,6 +210,7 @@ class Bot:
         if not zone:
             return self._restart(chat)
         zr = next((z for z in snap["zones"] if z["zone"] == user["zone"]), None) if snap else None
+        zr = plan.personalise(zr, bool(user.get("new_worker")))
         self.tg.send(chat, messages.status_text(zr, zone, snap["date"] if snap else engine.today_ist(), lang))
 
     def report(self, chat, user, rtype):

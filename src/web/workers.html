@@ -7,7 +7,7 @@
 <meta name="description" content="Today's heat risk and work–rest schedule for your area, in Hindi, read aloud.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E🔥%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@500;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@500;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link rel="stylesheet" href="assets/app.css">
 <style>
@@ -92,7 +92,7 @@ async function loadHelp(){
   L.circleMarker(me, {radius:8, color:'#fff', weight:3, fillColor:'#ff6a1a', fillOpacity:1}).addTo(hlayer);
   L.circle(me, {radius:r.max_walk_min*70, color:'#ff6a1a', weight:1, fillOpacity:.06, dashArray:'4 4'}).addTo(hlayer);
   rows.forEach(p => L.marker([p.lat, p.lon], {icon:L.divIcon({className:'', html:`<div style="font-size:20px">${KIND_IC[p.kind]}</div>`, iconSize:[22,22]})}).addTo(hlayer));
-  hmap.fitBounds(L.latLngBounds([me, ...rows.map(p => [p.lat, p.lon])]).pad(0.2));
+  if(rows.length) hmap.fitBounds(L.latLngBounds([me, ...rows.map(p => [p.lat, p.lon])]).pad(0.2), {maxZoom:16}); else hmap.setView(me, 14);
 }
 const t = k => TXT[lang][k];
 function applyLang(){

@@ -112,3 +112,74 @@ T.nav = async ({onCity}={}) => {
 T.footer = () => { const f = $('#foot'); if(f) f.innerHTML = `<div class="foot"><span>🔥 <b>Taap</b> — a Heat Action Plan, running and accountable.</span><span>Weather: <a href="https://open-meteo.com">Open-Meteo</a> (CC-BY 4.0) · Maps: © OpenStreetMap · Agents: Strands Agents (AWS open source) · Emergency: 112</span></div>`; };
 T.boot = () => { T.reveal(); T.tilt(); T.buttons(); T.footer(); };
 })();
+
+/* ---------- charts: smooth area / multi-line with crosshair + tooltip ---------- */
+(function(){
+const T = window.T, NS = 'http://www.w3.org/2000/svg';
+let uid = 0;
+function smooth(pts){ if(pts.length < 2) return ''; let d = `M${pts[0][0]},${pts[0][1]}`;
+  for(let i=0;i<pts.length-1;i++){ const p0 = pts[i-1]||pts[i], p1 = pts[i], p2 = pts[i+1], p3 = pts[i+2]||p2;
+    const c1 = [p1[0]+(p2[0]-p0[0])/6, p1[1]+(p2[1]-p0[1])/6], c2 = [p2[0]-(p3[0]-p1[0])/6, p2[1]-(p3[1]-p1[1])/6];
+    d += ` C${c1[0].toFixed(1)},${c1[1].toFixed(1)} ${c2[0].toFixed(1)},${c2[1].toFixed(1)} ${p2[0].toFixed(1)},${p2[1].toFixed(1)}`; }
+  return d; }
+function frame(el, height){
+  el.classList.add('chart'); el.innerHTML = '';
+  const W = Math.max(280, el.clientWidth || 600), H = height, pad = {l:34, r:62, t:14, b:24};
+  const svg = document.createElementNS(NS, 'svg'); svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.setAttribute('height', H); el.append(svg);
+  const tip = document.createElement('div'); tip.className = 'ctip'; el.append(tip);
+  return {svg, tip, W, H, pad, iw: W-pad.l-pad.r, ih: H-pad.t-pad.b};
+}
+function hover(f, n, xAt, onMove){
+  const r = document.createElementNS(NS,'rect'); r.setAttribute('x', f.pad.l); r.setAttribute('y', 0); r.setAttribute('width', f.iw); r.setAttribute('height', f.H);
+  r.setAttribute('fill', 'transparent'); f.svg.append(r);
+  const move = e => { const b = f.svg.getBoundingClientRect(), x = (e.clientX - b.left) * f.W / b.width;
+    const i = Math.max(0, Math.min(n-1, Math.round((x - f.pad.l) / f.iw * (n-1)))); onMove(i, b); };
+  r.addEventListener('mousemove', move); r.addEventListener('touchstart', e => move(e.touches[0]), {passive:true});
+}
+/* opts: {xs, ys, bands, thresholds:[{v,label}], now, tip(i), yMin, yMax, height, unit} */
+T.areaChart = (el, o) => {
+  const f = frame(el, o.height || 190), bc = T.bandColors(), n = o.ys.length, id = 'c'+(++uid);
+  const lo = Math.min(o.yMin ?? Infinity, ...o.ys) - 1, hi = Math.max(o.yMax ?? -Infinity, ...o.ys) + 1;
+  const X = i => f.pad.l + i/(n-1)*f.iw, Y = v => f.pad.t + (1-(v-lo)/(hi-lo))*f.ih;
+  const pts = o.ys.map((v,i) => [X(i), Y(v)]);
+  const stops = o.bands.map((b,i) => `<stop offset="${(i/(n-1)*100).toFixed(1)}%" stop-color="${bc[b]}"/>`).join('');
+  const line = smooth(pts), area = `${line} L${X(n-1)},${f.pad.t+f.ih} L${X(0)},${f.pad.t+f.ih} Z`;
+  let g = `<defs><linearGradient id="${id}h" x1="0" x2="1" y1="0" y2="0">${stops}</linearGradient>
+    <linearGradient id="${id}v" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+    <mask id="${id}m"><rect x="0" y="0" width="${f.W}" height="${f.H}" fill="url(#${id}v)"/></mask></defs>`;
+  for(let v = Math.ceil(lo/2)*2; v <= hi; v += 2) g += `<line class="grid" x1="${f.pad.l}" x2="${f.pad.l+f.iw}" y1="${Y(v)}" y2="${Y(v)}"/><text class="axis" x="${f.pad.l-6}" y="${Y(v)+3}" text-anchor="end">${v}°</text>`;
+  (o.thresholds||[]).filter(t => t.v > lo && t.v < hi).forEach(t => g += `<line class="thr" x1="${f.pad.l}" x2="${f.pad.l+f.iw}" y1="${Y(t.v)}" y2="${Y(t.v)}" stroke="${bc[t.band]}"/>
+    <rect x="${f.pad.l+f.iw+6}" y="${Y(t.v)-5}" width="8" height="8" rx="2" fill="${bc[t.band]}"/><text class="thr-l" x="${f.pad.l+f.iw+18}" y="${Y(t.v)+3}" fill="var(--muted)">${T.esc(t.label)}</text>`);
+  o.xs.forEach((x,i) => { if(i % (o.every||3) === 0) g += `<text class="axis" x="${X(i)}" y="${f.H-6}" text-anchor="middle">${x}</text>`; });
+  g += `<g class="area-in"><path d="${area}" fill="url(#${id}h)" mask="url(#${id}m)"/><path class="line" d="${line}" stroke="url(#${id}h)"/></g>`;
+  if(o.now != null && o.now >= 0 && o.now < n) g += `<line x1="${X(o.now)}" x2="${X(o.now)}" y1="${f.pad.t}" y2="${f.pad.t+f.ih}" stroke="var(--ink)" stroke-opacity=".5" stroke-dasharray="2 3"/><text class="axis" x="${X(o.now)}" y="${f.pad.t-3}" text-anchor="middle" fill="var(--ink)">now</text>`;
+  g += `<line class="cross" id="${id}x" y1="${f.pad.t}" y2="${f.pad.t+f.ih}" opacity="0"/><circle class="dot" id="${id}d" r="5" opacity="0"/>`;
+  f.svg.innerHTML = g;
+  hover(f, n, X, (i, b) => { const x = X(i), y = Y(o.ys[i]), cx = f.svg.querySelector('#'+id+'x'), d = f.svg.querySelector('#'+id+'d');
+    cx.setAttribute('x1', x); cx.setAttribute('x2', x); cx.setAttribute('opacity', 1);
+    d.setAttribute('cx', x); d.setAttribute('cy', y); d.setAttribute('fill', bc[o.bands[i]]); d.setAttribute('opacity', 1);
+    f.tip.innerHTML = o.tip ? o.tip(i) : `<b>${o.ys[i]}°</b>`; f.tip.style.left = (x / f.W * b.width) + 'px'; f.tip.style.top = (y / f.H * b.height) + 'px'; });
+};
+/* opts: {xs, series:[{name, ys, color}], ref, tip(i), height} - one axis, same unit */
+T.lineChart = (el, o) => {
+  const f = frame(el, o.height || 190), n = o.xs.length, all = o.series.flatMap(s => s.ys), id = 'c'+(++uid);
+  const lo = Math.floor(Math.min(...all)) - 1, hi = Math.ceil(Math.max(...all)) + 1;
+  const X = i => f.pad.l + i/(n-1||1)*f.iw, Y = v => f.pad.t + (1-(v-lo)/(hi-lo))*f.ih;
+  let g = '';
+  for(let v = Math.ceil(lo/2)*2; v <= hi; v += 2) g += `<line class="grid" x1="${f.pad.l}" x2="${f.pad.l+f.iw}" y1="${Y(v)}" y2="${Y(v)}"/><text class="axis" x="${f.pad.l-6}" y="${Y(v)+3}" text-anchor="end">${v}°</text>`;
+  if(o.ref != null && o.ref >= 0) g += `<rect x="${X(o.ref)-7}" y="${f.pad.t}" width="14" height="${f.ih}" rx="4" fill="var(--ink)" opacity=".08"/>`;
+  o.xs.forEach((x,i) => { if(i % (o.every||7) === 0) g += `<text class="axis" x="${X(i)}" y="${f.H-6}" text-anchor="middle">${x}</text>`; });
+  o.series.forEach((s, k) => { const pts = s.ys.map((v,i) => [X(i), Y(v)]);
+    g += `<defs><linearGradient id="${id}g${k}" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="${s.color}" stop-opacity=".28"/><stop offset="1" stop-color="${s.color}" stop-opacity="0"/></linearGradient></defs>
+      <g class="area-in"><path d="${smooth(pts)} L${X(n-1)},${f.pad.t+f.ih} L${X(0)},${f.pad.t+f.ih} Z" fill="url(#${id}g${k})"/><path class="line" d="${smooth(pts)}" stroke="${s.color}"/></g>
+      <text class="thr-l" x="${X(n-1)+8}" y="${Y(s.ys[n-1])+3}" fill="var(--muted)">${T.esc(s.name)}</text>`; });
+  g += `<line class="cross" id="${id}x" y1="${f.pad.t}" y2="${f.pad.t+f.ih}" opacity="0"/>` + o.series.map((s,k) => `<circle class="dot" id="${id}d${k}" r="4.5" fill="${s.color}" opacity="0"/>`).join('');
+  g += `<line id="${id}cur" y1="${f.pad.t}" y2="${f.pad.t+f.ih}" stroke="var(--ember)" stroke-width="3" stroke-linecap="round" opacity="0"/>`;
+  f.svg.innerHTML = g;
+  const show = (i, b) => { const x = X(i), cx = f.svg.querySelector('#'+id+'x'); cx.setAttribute('x1', x); cx.setAttribute('x2', x); cx.setAttribute('opacity', 1);
+    o.series.forEach((s,k) => { const d = f.svg.querySelector(`#${id}d${k}`); d.setAttribute('cx', x); d.setAttribute('cy', Y(s.ys[i])); d.setAttribute('opacity', 1); });
+    f.tip.innerHTML = o.tip ? o.tip(i) : o.xs[i]; f.tip.style.left = (x / f.W * b.width) + 'px'; f.tip.style.top = (Y(Math.max(...o.series.map(s=>s.ys[i]))) / f.H * b.height) + 'px'; };
+  hover(f, n, X, show);
+  return { cursor: i => { const c = f.svg.querySelector('#'+id+'cur'); c.setAttribute('x1', X(i)); c.setAttribute('x2', X(i)); c.setAttribute('opacity', 1); } };
+};
+})();

@@ -317,3 +317,125 @@ table.t th{color:var(--muted);font-weight:600;font-size:12.5px;text-transform:up
 .fab:hover{transform:translateY(-2px) scale(1.04)}
 .fab-dot{width:9px;height:9px;border-radius:50%;background:#fff;animation:ping 1.8s infinite}
 @media print{.fab,nav,.dock,#toasts{display:none!important}}
+
+/* =====================================================================
+   Design system v3 — "heat atlas": isotherm background, glass, display type
+   ===================================================================== */
+:root{
+  --display:"Bricolage Grotesque",Inter,system-ui,sans-serif;
+  --b0:#34c759; --b1:#ffd60a; --b2:#ff8000; --b3:#e8283c; --b4:#bf5af2;
+  --t-green:#34c759; --t-yellow:#ffd60a; --t-orange:#ff8000; --t-red:#e8283c;
+  --bg:#0a0908; --bg2:rgba(255,255,255,.035); --card:rgba(24,20,18,.55); --card-solid:#17130f;
+  --line:rgba(255,236,220,.08); --line2:rgba(255,236,220,.15); --ink:#f6efe7; --muted:#b3a89c; --faint:#7d7368;
+  --glass-hi:rgba(255,255,255,.10); --glass-lo:rgba(255,255,255,.015);
+  --radius:22px;
+}
+:root[data-theme="light"]{
+  --bg:#f6f1ea; --bg2:rgba(80,40,10,.04); --card:rgba(255,252,247,.62); --card-solid:#fffaf3;
+  --line:rgba(70,35,10,.10); --line2:rgba(70,35,10,.18); --ink:#1d1611; --muted:#6c6056; --faint:#998b7e;
+  --glass-hi:rgba(255,255,255,.75); --glass-lo:rgba(255,255,255,.25);
+}
+body{font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans Devanagari",sans-serif;letter-spacing:-.006em}
+h1,h2,.brand,.big-num,.stat b,.kpi .v,.zone-name,.nums b,.kpi-mini b,.orb-label b,.status-card .head{font-family:var(--display);font-optical-sizing:auto}
+h1{font-weight:800;letter-spacing:-.035em}
+.section-title h2{font-weight:700;letter-spacing:-.03em}
+::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-thumb{background:var(--line2);border-radius:10px;border:2px solid transparent;background-clip:padding-box}
+::-webkit-scrollbar-track{background:transparent}
+
+/* background: warm mesh that drifts + isotherm contour lines + grain */
+.bgfx{background:var(--bg);overflow:hidden}
+.bgfx::before{content:"";position:absolute;inset:-20%;
+  background:
+    radial-gradient(38% 34% at 78% 12%, rgba(255,110,30,.22), transparent 70%),
+    radial-gradient(30% 30% at 12% 38%, rgba(232,40,60,.14), transparent 70%),
+    radial-gradient(36% 32% at 55% 92%, rgba(255,200,60,.10), transparent 70%),
+    radial-gradient(26% 26% at 30% 8%, rgba(191,90,242,.08), transparent 70%);
+  filter:blur(20px);animation:mesh 28s ease-in-out infinite alternate}
+@keyframes mesh{0%{transform:translate3d(0,0,0) rotate(0)}50%{transform:translate3d(-3%,2%,0) rotate(4deg)}100%{transform:translate3d(2%,-2%,0) rotate(-3deg)}}
+.bgfx::after{opacity:1;background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='640' height='640' viewBox='0 0 640 640'%3E%3Cg fill='none' stroke='%23ff8a3d' stroke-opacity='.10' stroke-width='1.1'%3E%3Cpath d='M-20 120 C80 60 180 180 300 110 S520 40 660 120'/%3E%3Cpath d='M-20 170 C90 110 190 230 310 160 S530 90 660 170'/%3E%3Cpath d='M-20 230 C100 170 200 290 320 220 S540 150 660 230'/%3E%3Cpath d='M-20 300 C110 240 210 360 330 290 S550 220 660 300'/%3E%3Cpath d='M-20 380 C120 320 220 440 340 370 S560 300 660 380'/%3E%3Cpath d='M-20 470 C130 410 230 530 350 460 S570 390 660 470'/%3E%3Cpath d='M-20 570 C140 510 240 630 360 560 S580 490 660 570'/%3E%3C/g%3E%3Cg fill='none' stroke='%23ff5a3d' stroke-opacity='.09' stroke-width='1'%3E%3Cellipse cx='470' cy='300' rx='60' ry='38'/%3E%3Cellipse cx='470' cy='300' rx='105' ry='70'/%3E%3Cellipse cx='470' cy='300' rx='150' ry='104'/%3E%3C/g%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='.05'/%3E%3C/svg%3E");
+  background-size:640px 640px,160px 160px;animation:isotherm 90s linear infinite}
+@keyframes isotherm{to{background-position:640px 160px,0 0}}
+:root[data-theme="light"] .bgfx::after{filter:saturate(1.4) brightness(.7)}
+
+/* glass */
+.card{background:linear-gradient(160deg,var(--glass-hi),var(--glass-lo) 40%),var(--card);
+  border:1px solid var(--line);border-radius:var(--radius);
+  box-shadow:0 1px 0 rgba(255,255,255,.07) inset,0 30px 60px -30px rgba(0,0,0,.65),0 0 0 1px rgba(0,0,0,.2);
+  backdrop-filter:blur(22px) saturate(1.35);-webkit-backdrop-filter:blur(22px) saturate(1.35)}
+:root[data-theme="light"] .card{box-shadow:0 1px 0 rgba(255,255,255,.9) inset,0 24px 50px -28px rgba(90,40,0,.28)}
+.card::before{background:linear-gradient(150deg,rgba(255,190,120,.45),rgba(255,255,255,.04) 28%,transparent 60%,rgba(232,40,60,.28));opacity:.8}
+.card h3{font-family:Inter;font-size:11.5px;letter-spacing:.14em;color:var(--muted)}
+.card:hover::before{opacity:1}
+
+/* nav */
+nav{background:linear-gradient(180deg,color-mix(in srgb,var(--bg) 82%,transparent),color-mix(in srgb,var(--bg) 55%,transparent));border-bottom:1px solid var(--line)}
+.brand{font-size:22px;letter-spacing:-.04em}
+nav .links a{font-size:13.5px;border-radius:12px;position:relative}
+nav .links a.on{background:linear-gradient(160deg,var(--glass-hi),var(--glass-lo));box-shadow:inset 0 0 0 1px var(--line2)}
+nav .links a.on::after{content:"";position:absolute;left:30%;right:30%;bottom:3px;height:2px;border-radius:2px;background:linear-gradient(90deg,var(--ember2),var(--ember3))}
+.ctl{background:linear-gradient(160deg,var(--glass-hi),var(--glass-lo)),var(--card);backdrop-filter:blur(12px)}
+
+/* buttons: sheen sweep + press */
+.primary{position:relative;overflow:hidden;border-radius:14px;padding:11px 18px;letter-spacing:-.01em;
+  background:linear-gradient(135deg,#ff9a3c 0%,var(--ember) 40%,var(--ember3) 100%);
+  box-shadow:0 1px 0 rgba(255,255,255,.35) inset,0 12px 30px -10px rgba(255,90,40,.6)}
+.primary::after{content:"";position:absolute;top:0;bottom:0;width:40%;left:-60%;transform:skewX(-20deg);
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.45),transparent);transition:left .7s var(--ease)}
+.primary:hover::after{left:130%}
+.primary:active,.ghost:active,.ctl:active{transform:scale(.97)!important}
+.ghost{border-radius:14px;background:linear-gradient(160deg,var(--glass-hi),var(--glass-lo));backdrop-filter:blur(10px)}
+.ghost:hover{box-shadow:0 0 0 1px var(--ember) inset,0 10px 26px -14px rgba(255,90,40,.6)}
+.pill{border-radius:9px;letter-spacing:.04em;box-shadow:0 1px 0 rgba(255,255,255,.35) inset}
+.chip,.eyebrow{background:linear-gradient(160deg,var(--glass-hi),var(--glass-lo));border-color:var(--line2);backdrop-filter:blur(10px)}
+
+/* 3D scroll entrances */
+.reveal{opacity:0;transform:perspective(1200px) translate3d(0,46px,-40px) rotateX(9deg);transform-origin:50% 100%;
+  transition:opacity .9s var(--ease),transform 1.1s var(--ease);transition-delay:var(--d,0s)}
+.reveal.in{opacity:1;transform:none}
+.section-title{perspective:800px}
+.section-title h2{display:inline-block}
+
+/* maps: one dark cartographic style instead of sepia */
+#map,#hmap,.leaflet-container{background:#0d0c0b!important}
+.tiles{filter:invert(1) hue-rotate(195deg) saturate(.35) brightness(.78) contrast(1.05)!important}
+:root[data-theme="light"] .tiles{filter:saturate(.35) contrast(.95) brightness(1.03)!important}
+:root[data-theme="light"] #map,:root[data-theme="light"] #hmap{background:#eee8df!important}
+.leaflet-container{border-radius:18px;font-family:Inter}
+#map{box-shadow:inset 0 0 0 1px var(--line2),inset 0 0 60px rgba(0,0,0,.45)}
+.leaflet-bar{border:0!important;border-radius:12px!important;overflow:hidden;box-shadow:0 10px 24px -12px rgba(0,0,0,.6)!important}
+.leaflet-bar a{background:color-mix(in srgb,var(--card-solid) 80%,transparent)!important;backdrop-filter:blur(10px)}
+.zl{font-family:Inter;letter-spacing:.01em}
+
+/* charts */
+.chart{position:relative}
+.chart svg{display:block;width:100%;overflow:visible}
+.chart .grid{stroke:var(--line);stroke-width:1}
+.chart .axis{fill:var(--faint);font:500 10.5px "JetBrains Mono",monospace}
+.chart .thr{stroke-dasharray:3 4;stroke-width:1}
+.chart .thr-l{font:700 10px Inter;letter-spacing:.04em}
+.chart .line{fill:none;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.chart .cross{stroke:var(--ink);stroke-opacity:.35;stroke-width:1}
+.chart .dot{stroke:var(--card-solid);stroke-width:2}
+.chart .area-in{animation:areaIn 1.4s var(--ease) both}
+@keyframes areaIn{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
+.ctip{position:absolute;pointer-events:none;z-index:5;padding:8px 11px;border-radius:12px;font-size:12.5px;white-space:nowrap;
+  background:color-mix(in srgb,var(--card-solid) 92%,transparent);border:1px solid var(--line2);box-shadow:0 14px 30px -12px rgba(0,0,0,.7);
+  backdrop-filter:blur(10px);transform:translate(-50%,-110%);opacity:0;transition:opacity .15s}
+.ctip b{font-family:var(--display);font-size:15px}
+.chart:hover .ctip{opacity:1}
+
+/* KPI tiles & tables */
+.kpi .v{font-size:34px}
+.kpi-mini div,.nums div,.meta span,.act,.rep,.empty{background:linear-gradient(160deg,var(--glass-hi),var(--glass-lo));border-color:var(--line)}
+table.t tr{transition:background .2s}
+table.t tbody tr:hover{background:var(--bg2)}
+.act{transition:transform .25s var(--ease),border-color .25s}
+.act:hover{transform:translateX(4px);border-color:var(--line2)}
+.status-chip{letter-spacing:.02em}
+.foot{border-top:1px solid var(--line)}
+.hero h1{font-size:clamp(40px,6.4vw,92px);line-height:.95}
+.page-hero h1{font-size:clamp(36px,5.2vw,72px);line-height:1}
+
+@media (max-width:1560px){nav.has-ctrls .menu{display:inline-block}nav.has-ctrls .links{display:none;width:100%;order:3;flex-direction:column}nav.has-ctrls .links.open{display:flex}}

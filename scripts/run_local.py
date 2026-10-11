@@ -153,6 +153,7 @@ def poller():
     TG.call("deleteWebhook", {"drop_pending_updates": False})
     TG.call("setMyCommands", {"commands": [
         {"command": "start", "description": "Subscribe to heat alerts"},
+        {"command": "new", "description": "New to this work? Stricter limits"},
         {"command": "stop", "description": "Unsubscribe"},
         {"command": "ask", "description": "Officers: ask the plan assistant"}]})
     bot = Bot(ST, TG, agent=ask_for_bot)

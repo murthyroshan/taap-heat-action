@@ -4,7 +4,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 
 from . import messages, store, voice
-from .plan import city_risk, load_city, triggered_actions, zone_by_id
+from .plan import city_risk, load_city, personalise, triggered_actions, zone_by_id
 from .telegram import Telegram
 from .wbgt import IST
 
@@ -67,6 +67,7 @@ class Notifier:
         audio_cache: dict[str, bytes | None] = {}
         for u in self._users(city["id"], "worker"):
             zr = next((z for z in snap["zones"] if z["zone"] == u.get("zone")), None)
+            zr = personalise(zr, bool(u.get("new_worker")))
             if not zr or not zr.get("available") or zr["band"] < city.get("alert_min_band", 1):
                 continue
             if mode == "live" and zr["end"] and hour_now >= int(zr["end"][:2]):

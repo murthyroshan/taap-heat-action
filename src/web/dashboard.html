@@ -8,7 +8,7 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E🔥%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@500;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@500;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link rel="stylesheet" href="assets/app.css">
 </head>
@@ -18,7 +18,7 @@
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="haze" x="-20%" y="-20%" width="140%" height="140%"><feTurbulence id="hazeT" type="fractalNoise" baseFrequency="0.012 0.04" numOctaves="2" seed="3" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="9" xChannelSelector="R" yChannelSelector="G"/></filter></svg>
 <div class="progress-top" id="readbar"></div>
 
-<nav>
+<nav class="has-ctrls">
   <a class="brand" data-href="/"><div class="logo"><span>🔥</span></div>Taap</a>
   <button class="ctl menu" id="menuBtn" aria-label="Menu">☰</button>
   <div class="links" id="links"><a data-href="/">Home</a><a data-href="/dashboard" class="on">Dashboard</a><a data-href="/replay">2024 Replay</a><a data-href="/workers">Workers</a><a data-href="/saathi">🎙️ Saathi</a><a data-href="/officers">Officers</a><a data-href="/planner">Shift planner</a><a data-href="/ledger">Ledger</a><a data-href="/plans">Plans</a><a data-href="/method">Method</a></div>
@@ -303,12 +303,14 @@ function renderZone(){
       <div><p class="zone-name">${esc(z.name)} <span class="hi" style="color:var(--muted);font-size:17px">${esc(z.name_hi)}</span></p>
         <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">${pill(zr.tier, tc[zr.tier])} ${pill('band '+zr.band+' · '+b.label, bc[zr.band], zr.band===4)} ${zr.hot_night?pill('🌙 hot night '+zr.night_min+'°','#3a3f4b',true):''}</div></div></div>
     <div class="rule" style="--c:${bc[zr.band]}">${esc(rule)}</div>
-    <div class="note">Hourly WBGT (IST)${nowH>=0?' · outlined = now':''}</div>
-    <div class="hours" id="hrs">${zr.hourly.map(h => `<div class="${h.hour===nowH?'now':''}" style="--i:${h.hour};height:${(12+88*(h.wbgt-minW)/Math.max(1,maxW-minW)).toFixed(0)}%;background:linear-gradient(180deg,${bc[h.band]},color-mix(in srgb,${bc[h.band]} 45%,transparent))" title="${h.hour}:00 · ${h.temp}°C · ${h.rh}% RH · WBGT ${h.wbgt}°C"></div>`).join('')}</div>
-    <div class="axis">${zr.hourly.map(h => `<span>${h.hour%3===0?h.hour:''}</span>`).join('')}</div>
+    <div class="note">Hourly WBGT, IST — dashed lines are where each work–rest step begins</div>
+    <div id="hrs" style="margin-top:6px"></div>
     <div class="meta"><span>Peak <b>${zr.peak_wbgt}°C</b> at ${String(zr.peak_hour).padStart(2,'0')}:00</span><span>Tmax <b>${zr.tmax}°C</b></span>${zr.night_min!=null?`<span>Night low <b>${zr.night_min}°C</b></span>`:''}<span><a href="${T.STATIC ? `posters/${city()}-${mode}-${zr.zone}.html` : `/poster?${qs}`}" target="_blank">🖨️ Hindi poster</a></span></div>`;
   requestAnimationFrame(() => { const gv = $('#gv'); if(gv) gv.style.strokeDashoffset = C*(1-frac); countUp($('#gnum'), zr.peak_wbgt, {dec:1}); });
-  const hrs = $('#hrs'); REDUCED ? hrs.classList.add('go') : growIO.observe(hrs);
+  T.areaChart($('#hrs'), {xs: zr.hourly.map(h => String(h.hour).padStart(2,'0')), ys: zr.hourly.map(h => h.wbgt), bands: zr.hourly.map(h => h.band),
+    thresholds: BANDS.slice(1).map(b => ({v:b.min, band:b.band, label: b.band===4 ? 'stop' : `${b.work}/${b.rest}`})), now: nowH >= 0 ? zr.hourly.findIndex(h => h.hour===nowH) : null,
+    yMin: 20, yMax: 31, height: 200,
+    tip: i => { const h = zr.hourly[i], hb = BANDS[h.band]; return `<b>${h.wbgt}° WBGT</b> · ${String(h.hour).padStart(2,'0')}:00<br><span style="color:var(--muted)">${h.temp}°C · ${h.rh}% RH · ${h.band===0?'normal work':h.band>=4?'stop heavy work':hb.work+'/'+hb.rest+' min'}</span>`; } });
 }
 
 async function loadBacktest(){
