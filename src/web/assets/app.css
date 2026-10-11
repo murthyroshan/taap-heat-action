@@ -438,4 +438,10 @@ table.t tbody tr:hover{background:var(--bg2)}
 .hero h1{font-size:clamp(40px,6.4vw,92px);line-height:.95}
 .page-hero h1{font-size:clamp(36px,5.2vw,72px);line-height:1}
 
-@media (max-width:1560px){nav.has-ctrls .menu{display:inline-block}nav.has-ctrls .links{display:none;width:100%;order:3;flex-direction:column}nav.has-ctrls .links.open{display:flex}}
+/* dashboard: brand + controls on top, the full link bar as a second row */
+@media (max-width:1560px) and (min-width:701px){
+  nav.has-ctrls{row-gap:6px}
+  nav.has-ctrls .menu{display:none!important}
+  nav.has-ctrls .links{display:flex!important;flex-direction:row;order:3;width:100%;justify-content:center;overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none;padding-top:6px;border-top:1px solid var(--line)}
+  nav.has-ctrls .links a{white-space:nowrap}
+}
