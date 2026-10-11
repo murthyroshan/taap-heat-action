@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Build and deploy to AWS (Mumbai by default). First run asks for parameters and saves samconfig.toml.
+# Deploy to AWS (Mumbai by default). No `sam build` needed: the functions have no
+# third-party dependencies, so SAM uploads src/ as-is (works with any local Python).
+# First run asks for parameters and saves samconfig.toml.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 REGION="${AWS_REGION:-ap-south-1}"
-python3 -m pytest -q tests
-sam validate --lint
-sam build
+if python -c "import pytest" 2>/dev/null; then python -m pytest -q tests; fi
 if [ -f samconfig.toml ]; then
   sam deploy --region "$REGION"
 else

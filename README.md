@@ -78,21 +78,23 @@ python scripts/local_server.py           # http://localhost:8000 (admin token: "
 
 ## Deploy
 
-Prerequisites: an AWS account (Paid plan recommended; credits still apply), AWS CLI, SAM CLI, Python 3.12+, and a Telegram bot token from [@BotFather](https://t.me/BotFather).
+Prerequisites: an AWS account (Paid plan recommended; credits still apply), AWS CLI, SAM CLI, Python 3.10+, and a Telegram bot token from [@BotFather](https://t.me/BotFather).
 
 1. **Bundle the replay heatwave.** Run this from your own internet connection, because Open-Meteo rate-limits shared IPs:
    ```bash
    python scripts/fetch_replay_data.py
    ```
 2. **Check Bedrock access** in `ap-south-1` for the model you will use. The default is `apac.amazon.nova-lite-v1:0`. Marketplace-listed models need a one-time use-case form and a Marketplace subscription.
-3. **Deploy:**
+3. **Deploy** (no `sam build` needed; any local Python version works):
    ```bash
-   scripts/deploy.sh
+   scripts/deploy.sh                      # macOS / Linux / Git Bash
+   sam deploy --guided --stack-name taap --region ap-south-1 --capabilities CAPABILITY_IAM   # Windows PowerShell
    ```
    The first run is guided. Set `AdminToken`, `OfficerCode`, `TelegramToken` and a random `TelegramSecret` (16+ letters, digits, `_` or `-`). The webhook rejects every request without it.
 4. **Connect Telegram:**
    ```bash
-   TELEGRAM_TOKEN=... TELEGRAM_SECRET=... scripts/set_webhook.sh taap
+   TELEGRAM_TOKEN=... TELEGRAM_SECRET=... scripts/set_webhook.sh taap                       # bash
+   $env:TELEGRAM_TOKEN="..."; $env:TELEGRAM_SECRET="..."; .\scripts\set_webhook.ps1        # PowerShell
    ```
 5. **Open the `DashboardUrl` output.**
    - In Telegram, workers send `/start`.
