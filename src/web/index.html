@@ -75,13 +75,16 @@
   if(T.REDUCED) return;
   addEventListener('mousemove', e => { const x = e.clientX/innerWidth-.5, y = e.clientY/innerHeight-.5; T.$('#orb').style.transform = `rotateY(${x*24}deg) rotateX(${-y*24}deg)`;
     const s = T.$('#spot'); if(T.FINE){ s.style.opacity = 1; s.style.transform = `translate(${e.clientX}px,${e.clientY}px)`; } }, {passive:true});
-  const t = T.$('#hazeT'); let k = 0; (function hz(){ k += .006; t.setAttribute('baseFrequency', `${(0.012+Math.sin(k)*.004).toFixed(4)} ${(0.04+Math.cos(k*1.3)*.012).toFixed(4)}`); requestAnimationFrame(hz); })();
-  const c = T.$('#embers'), ctx = c.getContext('2d'); let w, h, ps = [];
-  const size = () => { w = c.width = c.offsetWidth*devicePixelRatio; h = c.height = c.offsetHeight*devicePixelRatio; }; size(); addEventListener('resize', size);
-  (function loop(){ ctx.clearRect(0,0,w,h); while(ps.length < 90) ps.push({x:Math.random()*w, y:h+10, r:(Math.random()*2.2+.6)*devicePixelRatio, vy:(Math.random()*.8+.4)*devicePixelRatio, vx:(Math.random()-.5)*.4, life:1, hue:20+Math.random()*25});
+  const c = T.$('#embers'), ctx = c.getContext('2d'); let w, h, ps = [], seen = true, running = true;
+  const dpr = Math.min(devicePixelRatio, 1.5);  // embers don't need full retina resolution
+  const size = () => { w = c.width = c.offsetWidth*dpr; h = c.height = c.offsetHeight*dpr; }; size(); addEventListener('resize', size);
+  (function loop(){ ctx.clearRect(0,0,w,h); while(ps.length < 90) ps.push({x:Math.random()*w, y:h+10, r:(Math.random()*2.2+.6)*dpr, vy:(Math.random()*.8+.4)*dpr, vx:(Math.random()-.5)*.4, life:1, hue:20+Math.random()*25});
     ps = ps.filter(p => p.life > 0 && p.y > -10);
     for(const p of ps){ p.y -= p.vy*1.6; p.x += p.vx + Math.sin(p.y/60)*.3; p.life -= .003; ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,7); ctx.fillStyle = `hsla(${p.hue},100%,${55+p.r*4}%,${p.life*.8})`; ctx.fill(); }
-    if(!document.hidden) requestAnimationFrame(loop); else document.addEventListener('visibilitychange', () => requestAnimationFrame(loop), {once:true}); })();
+    if(seen && !document.hidden) requestAnimationFrame(loop); else running = false; })();
+  const wake = () => { if(!running && seen && !document.hidden){ running = true; requestAnimationFrame(loop); } };
+  document.addEventListener('visibilitychange', wake);
+  new IntersectionObserver(([e]) => { seen = e.isIntersecting; wake(); }).observe(c);  // pause once scrolled past the hero
 })();
 </script>
 </body>

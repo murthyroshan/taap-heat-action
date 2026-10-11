@@ -445,3 +445,20 @@ table.t tbody tr:hover{background:var(--bg2)}
   nav.has-ctrls .links{display:flex!important;flex-direction:row;order:3;width:100%;justify-content:center;overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none;padding-top:6px;border-top:1px solid var(--line)}
   nav.has-ctrls .links a{white-space:nowrap}
 }
+
+/* =====================================================================
+   Performance: same look, far fewer per-frame repaints.
+   Blur behind content (backdrop-filter) is kept only on the sticky header, the Saathi input bar
+   and small floating elements; cards use a denser fill instead. Background layers move with
+   transforms, which the GPU composites without repainting.
+   ===================================================================== */
+:root{--card:rgba(24,20,18,.86)}
+:root[data-theme="light"]{--card:rgba(255,252,247,.92)}
+.card,.chip,.eyebrow,.ghost,.ctl,.flip .face,.leaflet-bar a,.msg.ai{backdrop-filter:none;-webkit-backdrop-filter:none}
+.bgfx::before{filter:none;will-change:transform}
+.bgfx::after{inset:-160px 0 0 -640px;animation:isotherm-drift 90s linear infinite;will-change:transform}
+@keyframes isotherm-drift{to{transform:translate3d(640px,160px,0)}}
+.glow.haze{filter:blur(10px);will-change:transform,opacity}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+}
