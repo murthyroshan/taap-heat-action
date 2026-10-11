@@ -90,7 +90,7 @@ function render(){
     return `<div class="hour-row${h.hour===nowH?' now':''}"><span class="h">${String(h.hour).padStart(2,'0')}:00</span><span class="sw" style="background:${bc[h.band]}"></span><span><b>${T.esc(txt)}</b> <span class="note">· ${h.temp}°C · WBGT ${h.wbgt}°</span></span></div>`; }).join('');
   T.$('#msg').textContent = data.text;
   T.$('#wa').href = 'https://wa.me/?text=' + encodeURIComponent(data.text + '\n\n— Taap');
-  T.$('#poster').href = (T.STATIC ? '#' : `/poster?city=${T.city()}&zone=${z.id}&mode=live`);
+  T.$('#poster').href = T.STATIC ? `posters/${T.city()}-live-${z.id}.html` : `/poster?city=${T.city()}&zone=${z.id}&mode=live`;
 }
 function speak(){
   if(!('speechSynthesis' in window)){ T.toast('Voice is not supported on this device','bad'); return; }

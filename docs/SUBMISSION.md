@@ -3,7 +3,7 @@
 ## Checklist (one submission per team, before the deadline)
 
 - [ ] **Public GitHub repo.** The commit history must fall within the event dates.
-- [ ] **Live link.** `DashboardUrl` from the stack outputs, with today's live data **and** a replay already run, so judges see a populated dashboard.
+- [ ] **Live link.** Either `DashboardUrl` from the AWS stack, or the GitHub Pages snapshot (`python scripts/export_static.py`, push `docs/`, enable Pages on master /docs). Run a live plan run **and** the 28 May 2024 replay first, so judges see real data.
 - [ ] **Demo video, 3 minutes or less,** on YouTube (public or unlisted). Open the link in a signed-out browser to check it plays. **AWS must be visible in the video**; mentioning it only in the writeup does not count.
 - [ ] **Short writeup:** problem, what you built, where AWS fits, and the AI tools used (draft below).
 - [ ] **Builder Center blog,** linked in the submission. The top 5 blogs win a prize (outline below).

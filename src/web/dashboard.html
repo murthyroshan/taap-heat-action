@@ -222,14 +222,14 @@ function setupCity(){
   const bounds = L.latLngBounds(c.zones.map(z => [z.lat, z.lon])).pad(0.25);
   if(!map._loaded || REDUCED) map.fitBounds(bounds); else map.flyToBounds(bounds, {duration:1.1});
   $('#rdate').min = c.replay.start; $('#rdate').max = c.replay.end; $('#rdate').value = c.replay.default;
-  $('#honesty').innerHTML = `<b>How to read this.</b> ${c.notes.map(esc).join(' ')} Worker bands use hourly outdoor WBGT (Liljegren model: temperature, humidity, wind, sun) against ACGIH screening limits for heavy, acclimatised work; guidance, not medical advice. Weather: <a href="https://open-meteo.com">Open-Meteo</a> (CC-BY 4.0) — modelled values, not station readings. Replay uses ERA5 reanalysis, which runs below station peaks. Feeds: <a id="capLink" href="/cap.xml?city=${c.id}&mode=${mode}">CAP 1.2 XML</a> (the format India's SACHET system ingests). Emergency: 112.`;
+  $('#honesty').innerHTML = `<b>How to read this.</b> ${c.notes.map(esc).join(' ')} Worker bands use hourly outdoor WBGT (Liljegren model: temperature, humidity, wind, sun) against ACGIH screening limits for heavy, acclimatised work; guidance, not medical advice. Weather: <a href="https://open-meteo.com">Open-Meteo</a> (CC-BY 4.0) — modelled values, not station readings. Replay uses ERA5 reanalysis, which runs below station peaks. Feeds: <a id="capLink" href="${T.STATIC ? `cap-${c.id}-${mode}.xml` : `/cap.xml?city=${c.id}&mode=${mode}`}">CAP 1.2 XML</a> (the format India's SACHET system ingests). Emergency: 112.`;
   load(); loadBacktest();
 }
 
 function setMode(m){
   mode = m; $('#mLive').classList.toggle('on', m==='live'); $('#mReplay').classList.toggle('on', m==='replay'); moveSeg();
   $('#replayBox').hidden = m!=='replay';
-  const cap = $('#capLink'); if(cap) cap.href = `/cap.xml?city=${city()}&mode=${mode}`;
+  const cap = $('#capLink'); if(cap) cap.href = T.STATIC ? `cap-${city()}-${mode}.xml` : `/cap.xml?city=${city()}&mode=${mode}`;
   load();
 }
 
@@ -322,7 +322,7 @@ function renderZone(){
     <div class="note">Hourly WBGT (IST)${nowH>=0?' · outlined = now':''}</div>
     <div class="hours" id="hrs">${zr.hourly.map(h => `<div class="${h.hour===nowH?'now':''}" style="--i:${h.hour};height:${(12+88*(h.wbgt-minW)/Math.max(1,maxW-minW)).toFixed(0)}%;background:linear-gradient(180deg,${bc[h.band]},color-mix(in srgb,${bc[h.band]} 45%,transparent))" title="${h.hour}:00 · ${h.temp}°C · ${h.rh}% RH · WBGT ${h.wbgt}°C"></div>`).join('')}</div>
     <div class="axis">${zr.hourly.map(h => `<span>${h.hour%3===0?h.hour:''}</span>`).join('')}</div>
-    <div class="meta"><span>Peak <b>${zr.peak_wbgt}°C</b> at ${String(zr.peak_hour).padStart(2,'0')}:00</span><span>Tmax <b>${zr.tmax}°C</b></span>${zr.night_min!=null?`<span>Night low <b>${zr.night_min}°C</b></span>`:''}<span><a href="/poster?${qs}" target="_blank">🖨️ Hindi poster</a></span></div>`;
+    <div class="meta"><span>Peak <b>${zr.peak_wbgt}°C</b> at ${String(zr.peak_hour).padStart(2,'0')}:00</span><span>Tmax <b>${zr.tmax}°C</b></span>${zr.night_min!=null?`<span>Night low <b>${zr.night_min}°C</b></span>`:''}<span><a href="${T.STATIC ? `posters/${city()}-${mode}-${zr.zone}.html` : `/poster?${qs}`}" target="_blank">🖨️ Hindi poster</a></span></div>`;
   requestAnimationFrame(() => { const gv = $('#gv'); if(gv) gv.style.strokeDashoffset = C*(1-frac); countUp($('#gnum'), zr.peak_wbgt, {dec:1}); });
   const hrs = $('#hrs'); REDUCED ? hrs.classList.add('go') : growIO.observe(hrs);
 }

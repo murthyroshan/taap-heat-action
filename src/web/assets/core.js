@@ -33,6 +33,8 @@ T.api = async (path, body) => {
   if(!r.ok) throw new Error(j.error || r.status);
   return j;
 };
+if(T.STATIC) document.addEventListener('DOMContentLoaded', () => document.body.insertAdjacentHTML('afterbegin',
+  '<div style="position:relative;z-index:1001;text-align:center;padding:7px 12px;font-size:12.5px;font-weight:600;background:linear-gradient(90deg,#ff6a1a,#ff2d55);color:#fff">Read-only demo snapshot · run Taap locally for live alerts, officer actions and the assistant</div>'));
 T.link = page => T.STATIC ? (page === '/' ? 'index.html' : page.slice(1) + '.html') : page;
 
 /* toasts */

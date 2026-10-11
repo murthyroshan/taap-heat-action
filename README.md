@@ -10,6 +10,7 @@ India has 250+ Heat Action Plans. Most sit as PDFs, warn city-wide on temperatur
 - **Plugs into national systems.** A **CAP 1.2** feed (the format India's SACHET alert system ingests) and a printable **Hindi poster** for labour chowks.
 - **Proves itself on history.** Replays and backtests the May–June 2024 Delhi heatwave.
 - **Any city is a config file.** Delhi and Ahmedabad are included.
+- **A page for each audience.** Home, live dashboard, a day-by-day 2024 replay, a Hindi-first workers page (read aloud, WhatsApp share), an officers' console, a public ledger with department scores, plans as readable rules, and the method.
 - **New city from its plan PDF.** Upload a Heat Action Plan; Amazon Bedrock drafts the config, a validator checks it, and a person reviews it and adds zones before it goes live.
 
 ## Architecture (all on AWS)
@@ -76,6 +77,13 @@ Everything runs locally in one process. The officer assistant and the plan-PDF i
 2. `pip install -r requirements-local.txt`
 3. Copy `.env.example` to `.env` and set `TELEGRAM_TOKEN`, `OFFICER_CODE`, `ADMIN_TOKEN` and `GROQ_API_KEY`.
 4. `python scripts/run_local.py`, then open http://localhost:8000.
+
+**Public demo link without AWS (GitHub Pages).** After a live run and a replay, export a read-only snapshot of every page with its data, then publish it:
+```bash
+python scripts/export_static.py        # writes docs/ (pages, data, posters, CAP feeds)
+git add docs && git commit -m "Demo snapshot" && git push
+```
+Then on GitHub: **Settings → Pages → Branch: master, folder: /docs**. The site appears at `https://<owner>.github.io/<repo>/`.
 
 What's different from the AWS deployment:
 - no Hindi voice notes (Amazon Polly needs an AWS account), so alerts are text only;
