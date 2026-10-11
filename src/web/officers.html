@@ -67,7 +67,7 @@ function render(){
   const acts = state.actions.filter(a => d==='all' || a.role===d).sort((a,b) => (a.status==='done') - (b.status==='done'));
   const done = acts.filter(a => a.status==='done').length, pct = acts.length ? done/acts.length*100 : 0;
   T.$('#bar').style.width = pct+'%'; T.$('#pct').textContent = acts.length ? `${done}/${acts.length}` : '—';
-  T.$('#summary').textContent = state.snapshot ? `${c.name} · ${state.snapshot.date} · plan tier ${state.snapshot.tier.toUpperCase()}` : 'No data for this day yet';
+  T.$('#summary').textContent = state.snapshot ? `${c.name} · ${state.snapshot.date} · plan tier ${state.snapshot.tier.toUpperCase()}` : (state.hint || 'No data for this day yet');
   T.$('#acts').innerHTML = acts.length ? acts.map((a,i) => `<div class="act" style="--i:${i};--c:${tc[a.tier]}"><div class="ic">${ICON[a.role]||'📌'}</div>
       <div><div class="t">${T.esc(a.text_rendered)}</div><div class="s">${T.esc(a.zone_name)} · ${T.esc(c.roles[a.role]||a.role)} · ${T.esc(a.ref)}</div></div>
       <div style="text-align:right">${a.status==='done' ? `<span class="status-chip done">✓ Done</span><div class="s" style="margin-top:4px">${T.esc(a.done_by)} · ${T.fmtTime(a.done_at)}</div>`
@@ -91,16 +91,21 @@ async function act(kind, btn, body){
   try{ await T.api('/api/officer/'+kind, {...body, city:T.city(), code, name}); T.sparks(btn); T.toast(kind==='done' ? 'Marked done — it is on the public ledger' : 'Report resolved','good'); await load(); }
   catch(e){ T.toast(e.message,'bad'); btn.disabled = false; }
 }
+let setMode;
 (async function(){
   await T.nav({onCity: () => { fillDepts(); load(); }});
   T.$('#name').value = T.store.get('taap.officer') || ''; T.$('#code').value = T.store.get('taap.ocode') || '';
   T.$('#name').onchange = () => T.store.set('taap.officer', T.$('#name').value); T.$('#code').onchange = () => T.store.set('taap.ocode', T.$('#code').value);
   fillDepts();
   T.$('#dept').onchange = () => { T.store.set('taap.dept', dept()); render(); };
-  const setMode = m => { mode = m; T.$('#mLive').classList.toggle('on', m==='live'); T.$('#mReplay').classList.toggle('on', m==='replay'); T.$('#rdate').hidden = m!=='replay'; moveSeg(); load(); };
+  setMode = m => { mode = m; T.$('#mLive').classList.toggle('on', m==='live'); T.$('#mReplay').classList.toggle('on', m==='replay'); T.$('#rdate').hidden = m!=='replay'; moveSeg(); load(); };
   T.$('#mLive').onclick = () => setMode('live'); T.$('#mReplay').onclick = () => setMode('replay'); T.$('#rdate').onchange = load;
   moveSeg(); document.fonts && document.fonts.ready.then(moveSeg);
-  T.boot(); load(); setInterval(() => mode==='live' && load(), 60000);
+  T.boot(); await load();
+  if(!state.actions.length){  // plan not active today: show the reference heatwave instead of an empty page
+    T.toast("No department tasks today — showing the reference heatwave replay", 'good'); setMode('replay');
+  }
+  setInterval(() => mode==='live' && load(), 60000);
 })();
 </script>
 </body>

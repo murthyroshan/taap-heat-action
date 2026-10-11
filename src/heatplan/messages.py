@@ -53,7 +53,7 @@ def date_label(day: str, lang: str) -> str:
     if lang == "hi":
         months = ["जनवरी", "फ़रवरी", "मार्च", "अप्रैल", "मई", "जून", "जुलाई", "अगस्त", "सितंबर", "अक्टूबर", "नवंबर", "दिसंबर"]
         return f"{d.day} {months[d.month - 1]} {d.year}"
-    return d.strftime("%-d %b %Y")
+    return f"{d.day} {d.strftime('%b %Y')}"  # no %-d: it is not supported on Windows
 
 
 def worker_alert(zr: dict, zone: dict, day: str, lang: str, replay: bool = False) -> dict:

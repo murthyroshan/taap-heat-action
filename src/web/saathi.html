@@ -10,16 +10,19 @@
 <link rel="stylesheet" href="assets/app.css">
 </head>
 <style>
-.sa{max-width:860px;margin:0 auto;padding:18px 16px 140px;display:grid;gap:14px}
-.stage{position:relative;display:grid;place-items:center;height:250px}
-#viz{width:250px;height:250px}
+.sa{max-width:760px;margin:0 auto;padding:12px 16px 130px;display:grid;gap:12px}
+.stage{position:relative;display:grid;place-items:center;height:200px;transition:height .5s var(--ease)}
+#viz{width:190px;height:190px;transition:width .5s var(--ease),height .5s var(--ease)}
+.sa.compact .stage{height:118px}.sa.compact #viz{width:104px;height:104px}.sa.compact .stage .state{bottom:-2px}
+.bar{display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap}
+.more{display:none;gap:8px;justify-content:center;flex-wrap:wrap}.more.open{display:flex;animation:pop .3s var(--ease)}
 .stage .state{position:absolute;bottom:4px;font-size:13px;color:var(--muted);font-weight:600;letter-spacing:.04em}
 .opts{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
 .opt{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:12px;border:1px solid var(--line2);background:var(--card);font-weight:600;font-size:13.5px;cursor:pointer}
 .opt input{accent-color:var(--ember)}
 .opt.on{border-color:var(--ember);box-shadow:0 0 0 1px var(--ember) inset}
 .thread{display:flex;flex-direction:column;gap:12px}
-.msg{max-width:92%;padding:12px 16px;border-radius:18px;font-size:16px;line-height:1.55;animation:pop .35s var(--ease) both;white-space:pre-wrap}
+.msg{max-width:86%;padding:11px 15px;border-radius:18px;font-size:15.5px;line-height:1.55;animation:pop .35s var(--ease) both;white-space:pre-wrap}
 .msg.me{align-self:flex-end;background:linear-gradient(135deg,var(--ember),var(--ember3));color:#fff;border-bottom-right-radius:6px}
 .msg.ai{align-self:flex-start;background:var(--card);border:1px solid var(--line2);border-bottom-left-radius:6px;backdrop-filter:blur(10px)}
 .msg .eng{display:block;margin-top:6px;font-size:11px;color:var(--faint);font-weight:600;letter-spacing:.04em}
@@ -57,9 +60,12 @@
 <div class="sa">
   <div class="stage"><canvas id="viz" width="500" height="500" aria-hidden="true"></canvas><div class="state" id="state">TAP THE MIC AND SPEAK</div></div>
   <div class="interim" id="interim"></div>
-  <div class="opts">
+  <div class="bar">
     <span class="opt" id="langOpt"><button class="ghost" data-l="hi" style="padding:2px 8px">हिंदी</button><button class="ghost" data-l="en" style="padding:2px 8px">English</button></span>
     <select id="zone" class="ctl" aria-label="Area"></select>
+    <button class="opt" id="moreBtn" aria-expanded="false">⚙︎ <span data-t="opts">विकल्प</span></button>
+  </div>
+  <div class="more" id="more">
     <label class="opt"><input type="checkbox" id="newW"> <span data-t="new">नया काम</span></label>
     <label class="opt"><input type="checkbox" id="hands"> <span data-t="hands">हैंड्स-फ़्री</span></label>
     <button class="opt" id="locate">📍 <span data-t="loc">मेरी जगह</span></button>
@@ -71,14 +77,14 @@
 <script src="assets/core.js"></script>
 <script>
 const I18N = {
-  hi:{new:'नया काम',hands:'हैंड्स-फ़्री',loc:'मेरी जगह',ph:'बोलें या लिखें…',listening:'सुन रहा हूँ…',thinking:'सोच रहा हूँ…',speaking:'बोल रहा हूँ…',idle:'माइक दबाएँ और बोलें',
+  hi:{opts:'विकल्प',new:'नया काम',hands:'हैंड्स-फ़्री',loc:'मेरी जगह',ph:'बोलें या लिखें…',listening:'सुन रहा हूँ…',thinking:'सोच रहा हूँ…',speaking:'बोल रहा हूँ…',idle:'माइक दबाएँ और बोलें',
       hello:'नमस्ते! मैं साथी हूँ। गर्मी, पानी, छाँव, काम के घंटे या कोई परेशानी — कुछ भी पूछें। माइक दबाकर बोलिए।',
-      chips:['आज कितनी गर्मी है?','सबसे पास पानी कहाँ है?','आज कब काम करूँ?','साइट पर पानी नहीं है','ठेकेदार आराम नहीं देता','मुझे चक्कर आ रहा है'],
+      chips:['आज कितनी गर्मी है?','सबसे पास पानी कहाँ है?','आज कब काम करूँ?','साइट पर पानी नहीं है'],
       walk:'मिनट',far:'दूर',risk:'आज का खतरा',places:'पास में मदद',shift:'सुरक्षित शिफ्ट',report:'शिकायत भेजी गई',rights:'आपके अधिकार',now:'अभी',sentTo:'भेजी गई:',dup:'यह शिकायत पहले ही भेजी जा चुकी है',nomic:'इस ब्राउज़र में आवाज़ से बोलना उपलब्ध नहीं — लिखकर पूछें',work:'मिनट काम',rest:'आराम',
       eng:{agent:'AI एजेंट · Strands',fallback:'ऑफ़लाइन नियम',triage:'सुरक्षा नियम — AI नहीं'}},
-  en:{new:'New worker',hands:'Hands-free',loc:'My location',ph:'Speak or type…',listening:'LISTENING…',thinking:'THINKING…',speaking:'SPEAKING…',idle:'TAP THE MIC AND SPEAK',
+  en:{opts:'Options',new:'New worker',hands:'Hands-free',loc:'My location',ph:'Speak or type…',listening:'LISTENING…',thinking:'THINKING…',speaking:'SPEAKING…',idle:'TAP THE MIC AND SPEAK',
       hello:"Hi, I'm Saathi. Ask me anything about today's heat, water, shade, when to work, or a problem at your site. Tap the mic and talk.",
-      chips:['How hot is it today?','Where is the nearest water?','When should I work today?','There is no water at my site','Contractor won\'t let us rest','I feel dizzy'],
+      chips:['How hot is it today?','Where is the nearest water?','When should I work today?','There is no water at my site'],
       walk:'min',far:'far',risk:'Today\'s risk',places:'Help nearby',shift:'Safe shift',report:'Report sent',rights:'Your rights',now:'now',sentTo:'Sent to',dup:'Already reported in the last 30 minutes',nomic:'Voice input is not available in this browser — type instead',work:'min work',rest:'rest',
       eng:{agent:'AI agent · Strands',fallback:'offline rules',triage:'safety rules — not AI'}},
 };
@@ -167,7 +173,8 @@ function card(c){
 }
 async function send(text){
   text = (text||'').trim(); if(!text) return;
-  T.$('#text').value = ''; bubble('me', T.esc(text)); setState('thinking');
+  T.$('#text').value = ''; T.$('.sa').classList.add('compact'); T.$('#chips').style.display = 'none';
+  bubble('me', T.esc(text)); setState('thinking');
   const wait = bubble('ai', '<span class="typing"><i></i><i></i><i></i></span>');
   try{
     const r = await T.api('/api/saathi', {text, city:T.city(), zone:T.$('#zone').value, lang, new:T.$('#newW').checked, session:sid, ...(here?{lat:here[0],lon:here[1]}:{})});
@@ -188,6 +195,7 @@ async function send(text){
   const saved = T.store.get('taap.zone.'+T.city()); if(saved) T.$('#zone').value = saved;
   T.$('#zone').onchange = () => { here = null; T.store.set('taap.zone.'+T.city(), T.$('#zone').value); };
   T.$('#mic').onclick = listen;
+  T.$('#moreBtn').onclick = () => { const m = T.$('#more'); m.classList.toggle('open'); T.$('#moreBtn').setAttribute('aria-expanded', m.classList.contains('open')); };
   T.$('#form').onsubmit = e => { e.preventDefault(); send(T.$('#text').value); };
   T.$('#locate').onclick = () => navigator.geolocation && navigator.geolocation.getCurrentPosition(p => { here = [p.coords.latitude, p.coords.longitude]; T.$('#locate').classList.add('on'); T.toast('📍 ✓','good'); }, () => T.toast('Location unavailable','bad'), {timeout:8000});
   if('speechSynthesis' in window) speechSynthesis.getVoices();

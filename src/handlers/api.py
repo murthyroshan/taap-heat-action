@@ -49,6 +49,25 @@ def _city(q):
     return c
 
 
+def _replay_snapshot(st, city: str, date: str | None):
+    """Replay days are computed on demand from the cached history (no messages sent)."""
+    win = load_city(city)["replay"]
+    day = date or win["default"]
+    snap = store.load_snapshot(st, city, "replay", day)
+    if snap or not (win["start"] <= day <= win["end"]):
+        return snap
+    try:
+        engine.run(city, "replay", day, replay.archive_series(st, city), st, notify=False)
+    except weather.WeatherError as e:
+        print(f"replay {city} {day}: {e}")
+        return None
+    return store.load_snapshot(st, city, "replay", day)
+
+
+def _snapshot(st, city, mode, date):
+    return _replay_snapshot(st, city, date) if mode == "replay" else store.load_snapshot(st, city, mode, date)
+
+
 def _latlon(q):
     try:
         lat, lon = float(q["lat"]), float(q["lon"])
@@ -111,7 +130,7 @@ def route(method: str, path: str, q: dict, payload: dict, st=None, agent=None, i
         city, mode, lang = _city(q), q.get("mode", "live"), ("en" if q.get("lang") == "en" else "hi")
         cfg = load_city(city)
         zone = next((z for z in cfg["zones"] if z["id"] == q.get("zone")), cfg["zones"][0])
-        snap = store.load_snapshot(st, city, mode, q.get("date"))
+        snap = _snapshot(st, city, mode, q.get("date"))
         zr = next((z for z in snap["zones"] if z["zone"] == zone["id"]), None) if snap else None
         if not zr or not zr.get("available"):
             return _resp({"zone": zone, "risk": None, "text": messages.status_text(None, zone, "", lang), "voice": ""})
@@ -129,7 +148,7 @@ def route(method: str, path: str, q: dict, payload: dict, st=None, agent=None, i
         lat, lon = _latlon(q)
         zone = places.nearest_zone(cfg, lat, lon) if lat is not None else \
             next((z for z in cfg["zones"] if z["id"] == q.get("zone")), cfg["zones"][0])
-        snap = store.load_snapshot(st, city, mode, q.get("date"))
+        snap = _snapshot(st, city, mode, q.get("date"))
         zr = next((z for z in snap["zones"] if z["zone"] == zone["id"]), None) if snap else None
         new = q.get("new") in ("1", "true")
         if path == "/api/shift":
@@ -186,9 +205,11 @@ def route(method: str, path: str, q: dict, payload: dict, st=None, agent=None, i
 
     if method == "GET" and path == "/api/state":
         city, mode = _city(q), q.get("mode", "live")
-        snap = store.load_snapshot(st, city, mode, q.get("date"))
+        snap = _snapshot(st, city, mode, q.get("date"))
         if not snap:
-            return _resp({"snapshot": None, "actions": [], "reports": []})
+            win = load_city(city)["replay"]
+            hint = f"Replay covers {win['start']} to {win['end']}." if mode == "replay" else "No forecast yet."
+            return _resp({"snapshot": None, "actions": [], "reports": [], "hint": hint})
         actions = store.list_actions(st, city, mode, snap["date"])
         reports = store.list_reports(st, city, snap["date"] if mode == "live" else engine.today_ist())
         return _resp({"snapshot": snap, "actions": actions, "reports": reports})
@@ -202,14 +223,14 @@ def route(method: str, path: str, q: dict, payload: dict, st=None, agent=None, i
 
     if method == "GET" and path == "/cap.xml":
         city, mode = _city(q), q.get("mode", "live")
-        snap = store.load_snapshot(st, city, mode, q.get("date"))
+        snap = _snapshot(st, city, mode, q.get("date"))
         if not snap:
             return _resp({"error": "no snapshot yet"}, 404)
         return _resp(cap.build(snap, mode), ctype="application/xml")
 
     if method == "GET" and path == "/poster":
         city, mode = _city(q), q.get("mode", "live")
-        snap = store.load_snapshot(st, city, mode, q.get("date"))
+        snap = _snapshot(st, city, mode, q.get("date"))
         if not snap:
             return _resp("<p>No data yet.</p>", 404, "text/html")
         return _resp(poster.build(snap, q.get("zone", "")), ctype="text/html")

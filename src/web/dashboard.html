@@ -206,6 +206,7 @@ function setupCity(){
   const bounds = L.latLngBounds(c.zones.map(z => [z.lat, z.lon])).pad(0.25);
   if(!map._loaded || REDUCED) map.fitBounds(bounds); else map.flyToBounds(bounds, {duration:1.1});
   $('#rdate').min = c.replay.start; $('#rdate').max = c.replay.end; $('#rdate').value = c.replay.default;
+  $('#rdate').onchange = () => { const v = $('#rdate').value; if(v < c.replay.start || v > c.replay.end){ toast(`Replay covers ${c.replay.start} to ${c.replay.end}`,'bad'); $('#rdate').value = c.replay.default; } load(); };
   $('#honesty').innerHTML = `<b>How to read this.</b> ${c.notes.map(esc).join(' ')} Worker bands use hourly outdoor WBGT (Liljegren model: temperature, humidity, wind, sun) against ACGIH screening limits for heavy, acclimatised work; guidance, not medical advice. Weather: <a href="https://open-meteo.com">Open-Meteo</a> (CC-BY 4.0) — modelled values, not station readings. Replay uses ERA5 reanalysis, which runs below station peaks. Feeds: <a id="capLink" href="${T.STATIC ? `cap-${c.id}-${mode}.xml` : `/cap.xml?city=${c.id}&mode=${mode}`}">CAP 1.2 XML</a> (the format India's SACHET system ingests). Emergency: 112.`;
   load(); loadBacktest();
 }
@@ -237,7 +238,7 @@ function render(){
   const s = state.snapshot, c = CITIES[city()], bc = BAND_C(), tc = TIER_C();
   layer.clearLayers();
   $('#heroMode').textContent = mode==='replay' ? `Replay · ${s ? s.date : $('#rdate').value}` : 'Live · updated hourly';
-  $('#mapTitle').textContent = s ? `${c.name} · ${s.date}${mode==='replay'?' · replay':''} · ${s.zones.filter(z=>z.available).length} zones` : `${c.name} · no data yet${mode==='replay'?' — run the replay':''}`;
+  $('#mapTitle').textContent = s ? `${c.name} · ${s.date}${mode==='replay'?' · replay':''} · ${s.zones.filter(z=>z.available).length} zones` : `${c.name} · ${state.hint || 'no data yet'}`;
   // hero status + orb
   if(s){
     const top = [...s.zones].filter(z=>z.available).sort((a,b)=>b.peak_wbgt-a.peak_wbgt)[0];

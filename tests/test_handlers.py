@@ -385,3 +385,21 @@ def test_shift_planner_avoids_hot_hours_when_cool_ones_suffice():
     hourly = [{"hour": h, "band": 3 if 12 <= h < 15 else 0, "wbgt": 29.5 if 12 <= h < 15 else 22} for h in range(24)]
     res = shift.plan_shift({"available": True, "hourly": hourly, "band": 3}, 8)
     assert res["feasible"] and res["planned_hot_minutes"] == 0 and res["usual_hot_hours"] == 3
+
+
+def test_any_replay_date_is_computed_on_demand(monkeypatch):
+    from heatplan import replay, weather
+    st = store.MemoryStore()
+    city = plan.load_city("delhi")
+    rows = []
+    for d in range(15, 32):
+        rows += synthetic_day(day=f"2024-05-{d:02d}", tmax=44, tmin=30)[12:36]
+    win = city["replay"]
+    st.put("CACHE", f"archive#delhi#{win['start']}#{win['end']}", {"blob": weather.pack({z["id"]: rows for z in city["zones"]})})
+    monkeypatch.setattr(replay, "FIXTURE_DIR", "/nonexistent")
+    body = json.loads(api.route("GET", "/api/state", {"city": "delhi", "mode": "replay", "date": "2024-05-20"}, {}, st)["body"])
+    assert body["snapshot"]["date"] == "2024-05-20" and body["actions"]
+    out = json.loads(api.route("GET", "/api/state", {"city": "delhi", "mode": "replay", "date": "2023-01-01"}, {}, st)["body"])
+    assert out["snapshot"] is None and "Replay covers" in out["hint"]
+    w = json.loads(api.route("GET", "/api/worker", {"city": "delhi", "zone": "narela", "mode": "replay", "date": "2024-05-21"}, {}, st)["body"])
+    assert w["risk"] and "मई" in w["text"]

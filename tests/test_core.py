@@ -208,3 +208,8 @@ def test_new_workers_get_stricter_bands():
     zr = plan.zone_risk(city["zones"][0], synthetic_day(tmax=33, tmin=24, rh_day=30, rh_night=50, sun=500), "2024-05-28", city)
     mine = plan.personalise(zr, True)
     assert mine["band"] > zr["band"] and mine["new_worker"] and plan.personalise(zr, False) is zr
+
+
+def test_date_label_works_without_platform_specific_formats():
+    assert messages.date_label("2024-05-08", "en") == "8 May 2024"
+    assert messages.date_label("2024-05-08", "hi") == "8 मई 2024"

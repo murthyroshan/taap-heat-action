@@ -54,7 +54,7 @@ from handlers import api  # noqa: E402
 from handlers.bot import Bot  # noqa: E402
 from handlers.tick import run_city  # noqa: E402
 from heatplan import store  # noqa: E402
-from heatplan.plan import list_cities  # noqa: E402
+from heatplan.plan import list_cities, load_city  # noqa: E402
 from heatplan.telegram import Telegram  # noqa: E402
 
 ST = store.get_store()
@@ -129,6 +129,21 @@ class Handler(BaseHTTPRequestHandler):
 
 
 # ---- hourly plan run -------------------------------------------------------
+def seed_replays():
+    """Run each city's reference heatwave day once (no messages sent) so every page has data."""
+    from heatplan import engine, replay
+    for c in list_cities():
+        day = load_city(c)["replay"]["default"]
+        if store.load_snapshot(ST, c, "replay", day):
+            continue
+        try:
+            snap = engine.run(c, "replay", day, replay.archive_series(ST, c), ST, notify=False)
+            replay.backtest(ST, c)
+            log(f"replay {c} {day}: tier {snap['tier']}, {snap['stats']['actions_created']} actions")
+        except Exception as e:
+            log(f"replay {c} skipped: {e}")
+
+
 def tick_all():
     for c in list_cities():
         try:
@@ -139,6 +154,8 @@ def tick_all():
 
 def scheduler():
     tick_all()
+    if os.environ.get("SEED_REPLAY", "1") == "1":
+        seed_replays()
     while True:
         now = datetime.now(timezone.utc)
         nxt = now.replace(minute=5, second=0, microsecond=0)
