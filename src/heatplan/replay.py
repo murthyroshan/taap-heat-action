@@ -43,7 +43,7 @@ def archive_series(st, city_id: str) -> dict:
 
 def backtest(st, city_id: str) -> dict:
     city = load_city(city_id)
-    key = f"backtest#{city_id}"
+    key = f"backtest2#{city_id}"
     cached = st.get("CACHE", key)
     if cached:
         return cached
@@ -65,6 +65,8 @@ def backtest(st, city_id: str) -> dict:
             "zones_orange": sum(1 for z in live if TIERS.index(z["tier"]) >= TIERS.index("orange")),
             "hot_night_zones": sum(1 for z in live if z["hot_night"]),
             "actions": sum(len(triggered_actions(city, z)) for z in live),
+            "zones": {z["zone"]: {"band": z["band"], "tier": z["tier"], "wbgt": z["peak_wbgt"], "tmax": z["tmax"],
+                                  "hot_night": z["hot_night"], "start": z["start"], "end": z["end"]} for z in live},
         })
     ref = city.get("reference_event", {})
     first_band3 = next((d["date"] for d in days if d["max_band"] >= 3), None)

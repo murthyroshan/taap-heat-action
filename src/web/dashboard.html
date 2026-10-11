@@ -1,0 +1,418 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Taap — Heat Action Plan, running</title>
+<meta name="description" content="Taap runs a city's Heat Action Plan: humidity-aware heat stress per zone, Hindi alerts for outdoor workers, and a public log of what officers actually did.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E🔥%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@500;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="assets/app.css">
+</head>
+<body>
+<div class="bgfx"></div>
+<div class="spot" id="spot"></div>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="haze" x="-20%" y="-20%" width="140%" height="140%"><feTurbulence id="hazeT" type="fractalNoise" baseFrequency="0.012 0.04" numOctaves="2" seed="3" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="9" xChannelSelector="R" yChannelSelector="G"/></filter></svg>
+<div class="progress-top" id="readbar"></div>
+
+<nav>
+  <a class="brand" data-href="/"><div class="logo"><span>🔥</span></div>Taap</a>
+  <button class="ctl menu" id="menuBtn" aria-label="Menu">☰</button>
+  <div class="links" id="links"><a data-href="/">Home</a><a data-href="/dashboard" class="on">Dashboard</a><a data-href="/replay">2024 Replay</a><a data-href="/workers">Workers</a><a data-href="/officers">Officers</a><a data-href="/ledger">Ledger</a><a data-href="/plans">Plans</a><a data-href="/method">Method</a></div>
+  <div class="controls">
+    <select id="city" class="ctl" aria-label="City"></select>
+    <div class="seg" role="tablist" id="seg"><span class="pill-bg"></span><button id="mLive" class="on">Live</button><button id="mReplay">Replay</button></div>
+    <span id="replayBox" hidden><input type="date" id="rdate" class="ctl" aria-label="Replay date"><button class="primary" id="runReplay">▶ Run replay</button></span>
+    <button id="theme" class="ctl" title="Toggle theme" aria-label="Toggle theme">☀︎</button>
+    <button id="settings" class="ctl" title="Admin token" aria-label="Admin token">⚙︎</button>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <canvas id="embers"></canvas>
+  <div>
+    <span class="eyebrow reveal"><span class="live-dot"></span><span id="heroMode">Live · updated hourly</span></span>
+    <h1 class="reveal" style="--d:.08s"><span id="heroCity">Delhi</span>'s Heat Action Plan,<br><span class="swap" id="swap"><span class="heat-text">running.</span></span></h1>
+    <p class="lede reveal" style="--d:.16s">Humidity-aware heat stress for every zone. Work–rest instructions to outdoor workers in Hindi. Every plan action sent to a named officer — and a public record of what actually happened.</p>
+    <div class="status reveal" style="--d:.24s" id="heroStatus"><span class="chip"><span class="skel" style="width:160px;margin:0"></span></span></div>
+    <div class="cta reveal" style="--d:.32s"><a class="primary" href="#ops" style="text-decoration:none">See today's plan ↓</a><a class="ghost" href="#how">How it works</a></div>
+  </div>
+  <div class="orb-wrap reveal" style="--d:.2s">
+    <div class="glow haze"></div>
+    <div class="orb" id="orb">
+      <div class="ring r3"><b></b></div><div class="ring r1"><b></b></div><div class="ring r2"><b></b></div>
+      <div class="core"></div>
+    </div>
+    <div class="orb-label">peak WBGT today<b id="orbVal">–</b></div>
+  </div>
+  <div class="scroll-cue"><span></span>scroll</div>
+</header>
+
+<div class="ticker" aria-hidden="true"><div class="track" id="ticker"></div></div>
+
+<main>
+  <section class="kpis">
+    <div class="card kpi tilt reveal"><div class="shine"></div><div class="l">Official plan tier · from Tmax</div><div class="v" id="kTier">–</div><div class="bar"><i id="kTierBar"></i></div></div>
+    <div class="card kpi tilt reveal" style="--d:.06s"><div class="shine"></div><div class="l">Worst worker band · from WBGT</div><div class="v" id="kBand">–</div><div class="bar"><i id="kBandBar"></i></div></div>
+    <div class="card kpi tilt reveal" style="--d:.12s"><div class="shine"></div><div class="l">Plan actions done</div><div class="v" id="kActs">–</div><div class="bar"><i id="kActsBar"></i></div></div>
+    <div class="card kpi tilt reveal" style="--d:.18s"><div class="shine"></div><div class="l">Open worker reports</div><div class="v" id="kReps">–</div><div class="bar"><i id="kRepsBar"></i></div></div>
+  </section>
+
+  <div class="section-title reveal" id="ops"><h2>Today, zone by zone</h2><p id="mapTitle">Loading…</p></div>
+  <section class="card reveal">
+    <div id="map"></div>
+    <div class="legend" id="legend"></div>
+  </section>
+  <section class="card tilt reveal" style="--d:.08s"><div class="shine"></div>
+    <h3>Zone detail</h3>
+    <div id="zone"><div class="skel"></div><div class="skel" style="width:70%"></div><div class="skel" style="width:50%"></div></div>
+  </section>
+
+  <div class="section-title reveal"><h2>Plan vs reality</h2><p>Every action the plan triggered, who owns it, and whether it happened.</p></div>
+  <section class="card full reveal">
+    <div class="progress"><div class="track"><i id="actBar"></i></div><b id="actPct">0%</b></div>
+    <div class="acts" id="acts"></div>
+  </section>
+
+  <section class="card reveal">
+    <h3>Worker reports · today</h3>
+    <div id="reps"></div>
+  </section>
+  <section class="card reveal" style="--d:.08s">
+    <h3>Ask the plan assistant</h3>
+    <div class="chat" id="answer"><div class="bubble ai">Ask about today's risk, open actions or the plan itself. I answer only from live data.</div></div>
+    <form id="askForm" class="askrow"><input id="q" maxlength="500" placeholder="Which zones still have open actions?" autocomplete="off"><button class="primary">Ask</button></form>
+    <div class="suggest" id="suggest"></div>
+    <p class="note" style="margin:10px 0 0">Strands Agents · read-only tools over the plan, live risk, actions and reports</p>
+  </section>
+
+  <div class="section-title reveal" id="how"><h2>How it works</h2><p>From a forecast to a worker resting in the shade — every hour.</p></div>
+  <section class="steps">
+    <div class="card step flip reveal" style="--d:0.00s" tabindex="0"><div class="in3d">
+      <div class="face front" data-n="1"><div class="em">🌡️</div><h4>Measure what bodies feel</h4><p>Hourly WBGT per zone from temperature, humidity, wind and sun — not just the day's maximum.</p><span class="hint">hover ↻</span></div>
+      <div class="face back"><b class="heat-text">4 inputs</b><p style="margin:8px 0 0;color:var(--ink)">temperature · humidity · wind · sun → one number the body feels, every hour, every zone.</p></div></div></div>
+    <div class="card step flip reveal" style="--d:0.08s" tabindex="0"><div class="in3d">
+      <div class="face front" data-n="2"><div class="em">🗣️</div><h4>Tell workers, in Hindi</h4><p>Work–rest schedules by Telegram text and voice. Posters for labour chowks reach people without phones.</p><span class="hint">hover ↻</span></div>
+      <div class="face back"><b class="heat-text">2 taps</b><p style="margin:8px 0 0;color:var(--ink)">to subscribe. Then a Hindi alert says exactly when to rest: “30 min work, 30 min rest, 12–4 PM”.</p></div></div></div>
+    <div class="card step flip reveal" style="--d:0.16s" tabindex="0"><div class="in3d">
+      <div class="face front" data-n="3"><div class="em">📋</div><h4>Task named officers</h4><p>Each plan action goes to the responsible department with a Done button. Workers can report back.</p><span class="hint">hover ↻</span></div>
+      <div class="face back"><b class="heat-text">1 button</b><p style="margin:8px 0 0;color:var(--ink)">per action. Water, shade, work breaks, hospitals — each owned by a named department.</p></div></div></div>
+    <div class="card step flip reveal" style="--d:0.24s" tabindex="0"><div class="in3d">
+      <div class="face front" data-n="4"><div class="em">🔎</div><h4>Prove it ran</h4><p>A public log of planned vs done, a CAP feed for alert systems, and a backtest on real heatwaves.</p><span class="hint">hover ↻</span></div>
+      <div class="face back"><b class="heat-text">100% public</b><p style="margin:8px 0 0;color:var(--ink)">Planned vs done, who and when — plus a CAP 1.2 feed India's SACHET system can ingest.</p></div></div></div>
+  </section>
+
+  <div class="section-title reveal"><h2>Backtest</h2><p>What the plan's rules would have triggered in a real heatwave.</p></div>
+  <section class="card full reveal" id="btCard">
+    <div id="bt"><div class="skel"></div><div class="skel" style="width:60%"></div></div>
+  </section>
+
+  <div class="section-title reveal"><h2>More</h2><p><a data-href="/replay">2024 replay, day by day</a> · <a data-href="/ledger">public ledger</a> · <a data-href="/plans">add a city from its PDF</a></p></div>
+</main>
+
+<footer><div class="card note reveal" id="honesty"></div></footer>
+<div class="toasts" id="toasts"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="assets/core.js"></script>
+<script>
+document.querySelectorAll('[data-href]').forEach(a => a.href = T.link(a.dataset.href));
+document.getElementById('menuBtn').onclick = () => document.getElementById('links').classList.toggle('open');
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const store = {get(k){try{return localStorage.getItem(k)}catch(e){return null}}, set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+const cssv = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const BAND_C = () => ['--b0','--b1','--b2','--b3','--b4'].map(cssv);
+const TIER_C = () => ({green:cssv('--t-green'),yellow:cssv('--t-yellow'),orange:cssv('--t-orange'),red:cssv('--t-red')});
+const TIERS = ['green','yellow','orange','red'];
+const REP = {water:['🚱','No drinking water'],shade:['⛱️','No shade'],work:['⛔','Work not stopped'],ill:['🤒','Someone unwell']};
+const ROLE_IC = {water:'💧',labour:'👷',disaster:'🛟',health:'🏥'};
+let CITIES = {}, BANDS = [], mode = 'live', state = null, map, layer, selected = null;
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pill = (txt, col, dark) => `<span class="pill${dark?' dark':''}" style="background:${col}">${esc(txt)}</span>`;
+const city = () => $('#city').value;
+const fmtTime = ts => ts ? new Date(ts*1000).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Kolkata'}) : '';
+
+/* ---------- theme ---------- */
+const themeIcon = () => $('#theme').textContent = document.documentElement.dataset.theme === 'light' ? '☾' : '☀︎';
+(function(){ const t = store.get('taap.theme'); if(t) document.documentElement.dataset.theme = t; themeIcon(); })();
+$('#theme').onclick = () => { const r = document.documentElement; r.dataset.theme = r.dataset.theme === 'light' ? 'dark' : 'light'; store.set('taap.theme', r.dataset.theme); themeIcon(); if(state) render(); };
+
+/* ---------- toasts ---------- */
+function toast(msg, kind=''){ const t = document.createElement('div'); t.className = 'toast '+kind; t.textContent = msg; $('#toasts').append(t); setTimeout(() => { t.style.transition='opacity .4s'; t.style.opacity=0; setTimeout(()=>t.remove(), 400); }, 4200); }
+
+/* ---------- motion helpers ---------- */
+const io = new IntersectionObserver(es => es.forEach(e => { if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } }), {threshold:.12, rootMargin:'0px 0px -40px 0px'});
+const observeReveals = () => $$('.reveal:not(.in)').forEach(el => io.observe(el));
+const growIO = new IntersectionObserver(es => es.forEach(e => { if(e.isIntersecting){ e.target.classList.add('go'); growIO.unobserve(e.target); } }), {threshold:.3});
+function countUp(el, to, {dec=0, suffix='', dur=1100}={}){
+  if(REDUCED || !isFinite(to)){ el.textContent = (isFinite(to)?to.toFixed(dec):'–')+suffix; return; }
+  const from = parseFloat(el.dataset.v || 0), t0 = performance.now(); el.dataset.v = to;
+  const step = now => { const p = Math.min(1,(now-t0)/dur), e = 1-Math.pow(1-p,3); el.textContent = (from+(to-from)*e).toFixed(dec)+suffix; if(p<1) requestAnimationFrame(step); };
+  requestAnimationFrame(step);
+}
+function bindTilt(root=document){
+  if(REDUCED || matchMedia('(hover: none)').matches) return;
+  root.querySelectorAll('.tilt:not([data-t])').forEach(el => {
+    el.dataset.t = 1;
+    el.addEventListener('mousemove', e => { const r = el.getBoundingClientRect(), x = (e.clientX-r.left)/r.width, y = (e.clientY-r.top)/r.height;
+      el.style.setProperty('--ry', ((x-.5)*8).toFixed(2)+'deg'); el.style.setProperty('--rx', ((.5-y)*8).toFixed(2)+'deg');
+      el.style.setProperty('--mx', (x*100)+'%'); el.style.setProperty('--my', (y*100)+'%'); });
+    el.addEventListener('mouseleave', () => { el.style.setProperty('--rx','0deg'); el.style.setProperty('--ry','0deg'); });
+  });
+}
+// orb follows the pointer in 3D
+if(!REDUCED) addEventListener('mousemove', e => { const x = e.clientX/innerWidth-.5, y = e.clientY/innerHeight-.5; $('#orb').style.transform = `rotateY(${x*24}deg) rotateX(${-y*24}deg)`; }, {passive:true});
+addEventListener('scroll', () => { const h = document.documentElement; $('#readbar').style.width = (h.scrollTop/(h.scrollHeight-h.clientHeight)*100)+'%'; }, {passive:true});
+
+/* ---------- embers ---------- */
+(function embers(){
+  const c = $('#embers'), ctx = c.getContext('2d'); if(REDUCED) return;
+  let w, h, ps = [], heat = .4, run = true;
+  const size = () => { w = c.width = c.offsetWidth*devicePixelRatio; h = c.height = c.offsetHeight*devicePixelRatio; };
+  size(); addEventListener('resize', size);
+  const spawn = () => ({x:Math.random()*w, y:h+10, r:(Math.random()*2.2+.6)*devicePixelRatio, vy:(Math.random()*.8+.4)*devicePixelRatio, vx:(Math.random()-.5)*.4, life:1, hue:20+Math.random()*25});
+  window.setHeat = v => heat = v;
+  document.addEventListener('visibilitychange', () => { run = !document.hidden; if(run) requestAnimationFrame(loop); });
+  function loop(){
+    if(!run) return;
+    ctx.clearRect(0,0,w,h);
+    const target = 30 + heat*90; while(ps.length < target) ps.push(spawn());
+    ps = ps.filter(p => p.life > 0 && p.y > -10);
+    for(const p of ps){ p.y -= p.vy*(1+heat); p.x += p.vx + Math.sin(p.y/60)*.3; p.life -= .0025 + (1-heat)*.002;
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,7); ctx.fillStyle = `hsla(${p.hue},100%,${55+p.r*4}%,${Math.max(0,p.life)*.8})`; ctx.shadowBlur = 12; ctx.shadowColor = `hsl(${p.hue},100%,55%)`; ctx.fill(); }
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+})();
+
+/* ---------- data ---------- */
+const api = (path, body) => T.api(path, body);
+
+async function init(){
+  const d = await api('/api/cities');
+  BANDS = d.bands;
+  d.cities.forEach(c => { CITIES[c.id] = c; $('#city').insertAdjacentHTML('beforeend', `<option value="${c.id}">${esc(c.name)}</option>`); });
+  const saved = store.get('taap.city'); $('#city').value = (saved && CITIES[saved]) ? saved : (CITIES.delhi ? 'delhi' : d.cities[0].id);
+  const bc = BAND_C();
+  $('#legend').innerHTML = BANDS.map(b => `<span><i style="background:${bc[b.band]}"></i>${b.band} · ${esc(b.label)}${b.band&&b.band<4?` (${b.work}/${b.rest} min)`:''}</span>`).join('') + '<span>ring = plan tier · pulse speed = risk</span>';
+  map = L.map('map', {scrollWheelZoom:false, zoomControl:true});
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors', maxZoom:18, className:'tiles'}).addTo(map);
+  layer = L.layerGroup().addTo(map);
+  $('#city').onchange = () => { store.set('taap.city', city()); selected = null; setupCity(); };
+  $('#mLive').onclick = () => setMode('live'); $('#mReplay').onclick = () => setMode('replay');
+  $('#runReplay').onclick = runReplay;
+  $('#settings').onclick = () => { const t = prompt('Admin token (needed for replay and plan import):', store.get('taap.token')||''); if(t!==null){ store.set('taap.token', t); toast('Admin token saved','good'); } };
+  $('#askForm').onsubmit = ask;
+  ['Which zones still have open actions?','When is it safe to work outside today?','What did the 2024 backtest show?'].forEach(q => { const b = document.createElement('button'); b.type='button'; b.textContent = q; b.onclick = () => { $('#q').value = q; $('#askForm').requestSubmit(); }; $('#suggest').append(b); });
+  moveSeg(); addEventListener('resize', moveSeg); document.fonts && document.fonts.ready.then(moveSeg);
+  setupCity();
+  setInterval(() => mode==='live' && load(true), 60000);
+}
+
+function moveSeg(){ const on = $('#seg .on'), bg = $('#seg .pill-bg'); bg.style.left = on.offsetLeft+'px'; bg.style.width = on.offsetWidth+'px'; }
+
+function setupCity(){
+  const c = CITIES[city()];
+  $('#heroCity').textContent = c.name;
+  const bounds = L.latLngBounds(c.zones.map(z => [z.lat, z.lon])).pad(0.25);
+  if(!map._loaded || REDUCED) map.fitBounds(bounds); else map.flyToBounds(bounds, {duration:1.1});
+  $('#rdate').min = c.replay.start; $('#rdate').max = c.replay.end; $('#rdate').value = c.replay.default;
+  $('#honesty').innerHTML = `<b>How to read this.</b> ${c.notes.map(esc).join(' ')} Worker bands use hourly outdoor WBGT (Liljegren model: temperature, humidity, wind, sun) against ACGIH screening limits for heavy, acclimatised work; guidance, not medical advice. Weather: <a href="https://open-meteo.com">Open-Meteo</a> (CC-BY 4.0) — modelled values, not station readings. Replay uses ERA5 reanalysis, which runs below station peaks. Feeds: <a id="capLink" href="/cap.xml?city=${c.id}&mode=${mode}">CAP 1.2 XML</a> (the format India's SACHET system ingests). Emergency: 112.`;
+  load(); loadBacktest();
+}
+
+function setMode(m){
+  mode = m; $('#mLive').classList.toggle('on', m==='live'); $('#mReplay').classList.toggle('on', m==='replay'); moveSeg();
+  $('#replayBox').hidden = m!=='replay';
+  const cap = $('#capLink'); if(cap) cap.href = `/cap.xml?city=${city()}&mode=${mode}`;
+  load();
+}
+
+async function runReplay(){
+  const token = store.get('taap.token');
+  if(!token){ toast('Set the admin token first (⚙︎).','bad'); return; }
+  const b = $('#runReplay'); b.disabled = true; b.textContent = 'Running…';
+  try{ const r = await api('/api/replay', {city:city(), date:$('#rdate').value, token, notify:true}); await load();
+       const st = r.snapshot.stats || {}; sparks($('#runReplay')); toast(`Replay ${r.snapshot.date}: ${st.actions_created||0} actions, ${st.officer_messages||0} officer messages, ${st.worker_alerts||0} worker alerts`,'good'); }
+  catch(e){ toast('Replay failed: '+e.message,'bad'); }
+  finally{ b.disabled = false; b.textContent = '▶ Run replay'; }
+}
+
+async function load(quiet){
+  const qs = new URLSearchParams({city:city(), mode}); if(mode==='replay') qs.set('date', $('#rdate').value);
+  try{ state = await api('/api/state?'+qs); }catch(e){ state = {snapshot:null,actions:[],reports:[]}; if(!quiet) toast('Could not load state: '+e.message,'bad'); }
+  render();
+}
+
+function render(){
+  const s = state.snapshot, c = CITIES[city()], bc = BAND_C(), tc = TIER_C();
+  layer.clearLayers();
+  $('#heroMode').textContent = mode==='replay' ? `Replay · ${s ? s.date : $('#rdate').value}` : 'Live · updated hourly';
+  $('#mapTitle').textContent = s ? `${c.name} · ${s.date}${mode==='replay'?' · replay':''} · ${s.zones.filter(z=>z.available).length} zones` : `${c.name} · no data yet${mode==='replay'?' — run the replay':''}`;
+  // hero status + orb
+  if(s){
+    const top = [...s.zones].filter(z=>z.available).sort((a,b)=>b.peak_wbgt-a.peak_wbgt)[0];
+    const b = BANDS[s.max_band];
+    $('#heroStatus').innerHTML = `<span class="chip"><i style="color:${tc[s.tier]};background:${tc[s.tier]}"></i>Plan tier: ${esc(s.tier.toUpperCase())}</span>
+      <span class="chip"><i style="color:${bc[s.max_band]};background:${bc[s.max_band]}"></i>Workers: ${esc(b.label)}</span>
+      ${top?`<span class="chip">🔥 Hottest: ${esc(c.zones.find(z=>z.id===top.zone).name)} ${top.start?`· ${top.start}–${top.end}`:''}</span>`:''}`;
+    countUp($('#orbVal'), top ? top.peak_wbgt : NaN, {dec:1, suffix:'°'});
+    window.setHeat && setHeat(Math.min(1, s.max_band/4 + .15));
+  } else { $('#heroStatus').innerHTML = `<span class="chip">No data yet${mode==='replay'?' — pick a date and run the replay':''}</span>`; $('#orbVal').textContent = '–'; }
+  // KPIs
+  $('#kTier').innerHTML = s ? pill(s.tier, tc[s.tier]) : '–';
+  $('#kTierBar').style.width = s ? ((TIERS.indexOf(s.tier)+1)/4*100)+'%' : '0';
+  $('#kBand').innerHTML = s ? pill(`${s.max_band} · ${BANDS[s.max_band].label}`, bc[s.max_band], s.max_band===4) : '–';
+  $('#kBandBar').style.width = s ? ((s.max_band+1)/5*100)+'%' : '0';
+  const done = state.actions.filter(a => a.status==='done').length, total = state.actions.length, pct = total ? done/total*100 : 0;
+  $('#kActs').innerHTML = total ? `<span id="kActsN">0</span>&nbsp;<span style="color:var(--muted);font-size:20px">/ ${total}</span>` : '0';
+  if(total) countUp($('#kActsN'), done);
+  $('#kActsBar').style.width = pct+'%';
+  const openReps = state.reports.filter(r => r.status!=='resolved').length;
+  countUp($('#kReps'), openReps); $('#kRepsBar').style.width = Math.min(100, openReps*20)+'%';
+  // map
+  heatField();
+  if(s) s.zones.forEach(zr => {
+    if(!zr.available) return;
+    const z = c.zones.find(x => x.id===zr.zone);
+    const icon = L.divIcon({className:'', iconSize:[26,26], iconAnchor:[13,13],
+      html:`<div class="zm${selected===zr.zone?' sel':''}" style="--c:${bc[zr.band]};--tier:${tc[zr.tier]};--sp:${(2.8-zr.band*.45).toFixed(2)}s"><span class="pulse"></span><span class="pulse p2"></span><span class="dot"></span></div>`});
+    const m = L.marker([z.lat, z.lon], {icon, keyboard:true, title:z.name});
+    m.bindTooltip(`<b>${esc(z.name)}</b> <span class="hi">${esc(z.name_hi)}</span><br>WBGT ${zr.peak_wbgt}°C · band ${zr.band}<br>Tmax ${zr.tmax}°C · ${zr.tier}${zr.hot_night?' · hot night':''}`, {className:'tip', direction:'top', offset:[0,-12]});
+    m.on('click', () => { selected = zr.zone; render(); document.querySelector('#zone').scrollIntoView({behavior:'smooth', block:'nearest'}); });
+    m.addTo(layer);
+    L.tooltip({permanent:true, direction:'bottom', offset:[0,14], className:'zl', interactive:false}).setLatLng([z.lat, z.lon]).setContent(esc(z.name)).addTo(layer);
+  });
+  if(s && !selected){ selected = [...s.zones].filter(z=>z.available).sort((a,b)=>b.peak_wbgt-a.peak_wbgt)[0]?.zone; if(selected) return render(); }
+  renderZone();
+  // actions
+  $('#actBar').style.width = pct+'%'; $('#actPct').textContent = total ? `${done}/${total} done · ${Math.round(pct)}%` : '—';
+  $('#acts').innerHTML = total ? state.actions.map((a,i) => `<div class="act" style="--i:${i};--c:${tc[a.tier]||cssv('--ember')}"><div class="ic">${ROLE_IC[a.role]||'📌'}</div>
+      <div><div class="t">${esc(a.text_rendered)}</div><div class="s">${esc(a.zone_name)} · ${esc(c.roles[a.role]||a.role)} · ${esc(a.ref)}</div></div>
+      <div style="text-align:right">${a.status==='done'?`<span class="status-chip done">✓ Done</span><div class="s" style="margin-top:4px">${esc(a.done_by)} · ${fmtTime(a.done_at)}</div>`:'<span class="status-chip open">● Open</span>'}</div></div>`).join('')
+    : `<div class="empty">${s && s.tier==='green' ? 'The plan is not active today (green tier), so departments are not tasked. Workers still get WBGT work–rest guidance.' : mode==='replay' ? 'Run the replay to see the plan fire.' : 'No plan actions triggered.'}</div>`;
+  // reports
+  $('#reps').innerHTML = state.reports.length ? state.reports.map((r,i) => `<div class="rep" style="animation-delay:${i*40}ms"><span style="font-size:20px">${(REP[r.type]||['📣'])[0]}</span><div class="grow"><b>${esc((REP[r.type]||['',r.type])[1])}</b><div class="note">${esc(r.zone_name)}</div></div><span class="time">${esc(r.time)}</span>${r.status==='resolved'?'<span class="status-chip done">Resolved</span>':'<span class="status-chip open">Open</span>'}</div>`).join('')
+    : '<div class="empty">No reports today. Workers report from the Telegram bot: no water, no shade, work not stopped, someone unwell.</div>';
+  bindTilt(); bindButtons(); renderTicker();
+}
+
+function renderZone(){
+  const s = state?.snapshot, c = CITIES[city()], bc = BAND_C(), tc = TIER_C();
+  const zr = s?.zones.find(z => z.zone===selected);
+  if(!zr || !zr.available){ $('#zone').innerHTML = '<div class="empty">Select a zone on the map.</div>'; return; }
+  const z = c.zones.find(x => x.id===zr.zone), b = BANDS[zr.band];
+  const rule = zr.band===0 ? 'Normal work — keep drinking water.' : zr.band>=4 ? `Stop heavy work ${zr.start}–${zr.end} IST.` : `Heavy work ${zr.start}–${zr.end} IST: ${b.work} min work / ${b.rest} min rest each hour.`;
+  const qs = new URLSearchParams({city:city(), mode, zone:zr.zone, date:s.date});
+  const R = 50, C = 2*Math.PI*R, frac = Math.max(0, Math.min(1, (zr.peak_wbgt-18)/16));
+  const nowH = mode==='live' ? new Date().toLocaleString('en-GB',{hour:'2-digit',hour12:false,timeZone:'Asia/Kolkata'})*1 : -1;
+  const maxW = Math.max(...zr.hourly.map(h=>h.wbgt), 32), minW = Math.min(...zr.hourly.map(h=>h.wbgt), 15);
+  $('#zone').innerHTML = `<div class="zone-head">
+      <div class="gauge"><svg width="118" height="118" viewBox="0 0 118 118"><circle class="track" cx="59" cy="59" r="${R}" fill="none" stroke-width="10"/>
+        <circle class="val" id="gv" cx="59" cy="59" r="${R}" fill="none" stroke="${bc[zr.band]}" stroke-width="10" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C}" style="filter:drop-shadow(0 0 6px ${bc[zr.band]})"/></svg>
+        <div class="num"><div><b id="gnum">0</b><small>WBGT °C</small></div></div></div>
+      <div><p class="zone-name">${esc(z.name)} <span class="hi" style="color:var(--muted);font-size:17px">${esc(z.name_hi)}</span></p>
+        <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">${pill(zr.tier, tc[zr.tier])} ${pill('band '+zr.band+' · '+b.label, bc[zr.band], zr.band===4)} ${zr.hot_night?pill('🌙 hot night '+zr.night_min+'°','#3a3f4b',true):''}</div></div></div>
+    <div class="rule" style="--c:${bc[zr.band]}">${esc(rule)}</div>
+    <div class="note">Hourly WBGT (IST)${nowH>=0?' · outlined = now':''}</div>
+    <div class="hours" id="hrs">${zr.hourly.map(h => `<div class="${h.hour===nowH?'now':''}" style="--i:${h.hour};height:${(12+88*(h.wbgt-minW)/Math.max(1,maxW-minW)).toFixed(0)}%;background:linear-gradient(180deg,${bc[h.band]},color-mix(in srgb,${bc[h.band]} 45%,transparent))" title="${h.hour}:00 · ${h.temp}°C · ${h.rh}% RH · WBGT ${h.wbgt}°C"></div>`).join('')}</div>
+    <div class="axis">${zr.hourly.map(h => `<span>${h.hour%3===0?h.hour:''}</span>`).join('')}</div>
+    <div class="meta"><span>Peak <b>${zr.peak_wbgt}°C</b> at ${String(zr.peak_hour).padStart(2,'0')}:00</span><span>Tmax <b>${zr.tmax}°C</b></span>${zr.night_min!=null?`<span>Night low <b>${zr.night_min}°C</b></span>`:''}<span><a href="/poster?${qs}" target="_blank">🖨️ Hindi poster</a></span></div>`;
+  requestAnimationFrame(() => { const gv = $('#gv'); if(gv) gv.style.strokeDashoffset = C*(1-frac); countUp($('#gnum'), zr.peak_wbgt, {dec:1}); });
+  const hrs = $('#hrs'); REDUCED ? hrs.classList.add('go') : growIO.observe(hrs);
+}
+
+async function loadBacktest(){
+  $('#bt').innerHTML = '<div class="skel"></div><div class="skel" style="width:60%"></div><div class="skel" style="width:80%"></div>';
+  try{
+    const b = await api('/api/backtest?city='+city()); const s = b.summary, bc = BAND_C();
+    const maxT = Math.max(...b.days.map(d=>d.tmax)), minT = Math.min(...b.days.map(d=>d.tmax));
+    const n = (k, label) => `<div><b data-n="${s[k]??''}">–</b><span>${label}</span></div>`;
+    $('#bt').innerHTML = `<p style="margin:0">Replaying <b>${b.window.start} → ${b.window.end}</b> through the plan. ${esc(b.reference_event.text||'')}</p>
+      <div class="nums">
+        <div><b style="font-size:20px">${s.first_worker_warning||'–'}</b><span>first worker warning (band ≥3)${s.lead_days_before_reference!=null?` · ${s.lead_days_before_reference} days before the reference peak`:''}${s.warning_from_window_start?' (already active at window start)':''}</span></div>
+        ${n('days_with_band3_plus','days needing work–rest limits')}${n('zone_days_band3_plus','zone-days of band ≥3 alerts')}${n('days_orange_or_red','days at orange/red tier')}${n('hot_night_zone_days','zone-days raised by hot nights')}${n('actions_triggered','plan actions that would have been assigned')}
+      </div>
+      <div class="bt" id="btbars">${b.days.map((d,i) => `<div class="${d.date===b.reference_event.date?'ref':''}" title="${d.date}: Tmax ${d.tmax}°C · WBGT ${d.peak_wbgt}°C · band ${d.max_band} · ${d.tier}" style="--i:${i};height:${15+85*(d.tmax-minT)/Math.max(1,maxT-minT)}%;background:linear-gradient(180deg,${bc[d.max_band]},color-mix(in srgb,${bc[d.max_band]} 40%,transparent))"></div>`).join('')}</div>
+      <p class="note">Bar height = modelled daily Tmax · colour = worst worker band · outlined = reference day. ${esc(b.caveat)}</p>`;
+    const nums = $$('#bt b[data-n]');
+    const go = () => nums.forEach(el => el.dataset.n !== '' ? countUp(el, +el.dataset.n, {dur:1500}) : null);
+    const bars = $('#btbars');
+    if(REDUCED){ bars.classList.add('go'); go(); }
+    else new IntersectionObserver((es, o) => es.forEach(e => { if(e.isIntersecting){ bars.classList.add('go'); go(); o.disconnect(); } }), {threshold:.25}).observe(bars);
+  }catch(e){ $('#bt').innerHTML = `<div class="empty">Backtest unavailable: ${esc(e.message)}</div>`; }
+}
+
+async function ask(e){
+  e.preventDefault(); const q = $('#q').value.trim(); if(!q) return;
+  const chat = $('#answer');
+  chat.insertAdjacentHTML('beforeend', `<div class="bubble me">${esc(q)}</div><div class="bubble ai" id="pending"><span class="typing"><i></i><i></i><i></i></span></div>`);
+  chat.scrollTop = chat.scrollHeight; $('#q').value = '';
+  try{ const r = await api('/api/ask', {question:q, city:city()}); $('#pending').textContent = r.answer; }
+  catch(err){ $('#pending').textContent = 'Assistant unavailable: '+err.message; }
+  $('#pending').removeAttribute('id'); chat.scrollTop = chat.scrollHeight;
+}
+
+
+
+/* ---------- round 2 effects ---------- */
+const FINE = matchMedia('(hover: hover) and (pointer: fine)').matches;
+// heat haze: animate the turbulence
+if(!REDUCED){ const t = $('#hazeT'); let k = 0; (function hz(){ k += .006; t.setAttribute('baseFrequency', `${(0.012+Math.sin(k)*.004).toFixed(4)} ${(0.04+Math.cos(k*1.3)*.012).toFixed(4)}`); requestAnimationFrame(hz); })(); }
+// bilingual headline
+(function(){ const words = ['running.', 'चालू है।'], el = $('#swap'); if(!el || REDUCED) return; let i = 0;
+  setInterval(() => { const sp = el.firstElementChild; sp.classList.add('out'); setTimeout(() => { i = (i+1)%words.length; sp.textContent = words[i]; sp.classList.toggle('hi', i===1); sp.classList.remove('out'); }, 450); }, 3600); })();
+// cursor spotlight + parallax
+if(FINE && !REDUCED){
+  const spot = $('#spot');
+  addEventListener('mousemove', e => { spot.style.opacity = 1; spot.style.transform = `translate(${e.clientX}px,${e.clientY}px)`; }, {passive:true});
+  document.addEventListener('mouseleave', () => spot.style.opacity = 0);
+}
+if(!REDUCED) addEventListener('scroll', () => { const y = scrollY; if(y > innerHeight) return;
+  $('.orb-wrap').style.translate = `0 ${y*.18}px`; $('#embers').style.translate = `0 ${y*.35}px`; $('.hero h1').style.translate = `0 ${y*.06}px`; }, {passive:true});
+// magnetic buttons + ripples
+function bindButtons(root=document){
+  root.querySelectorAll('.primary:not([data-m]),.ghost:not([data-m])').forEach(b => {
+    b.dataset.m = 1;
+    if(FINE && !REDUCED){
+      b.addEventListener('mousemove', e => { const r = b.getBoundingClientRect(); b.style.transform = `translate(${(e.clientX-r.left-r.width/2)*.18}px,${(e.clientY-r.top-r.height/2)*.25}px)`; });
+      b.addEventListener('mouseleave', () => b.style.transform = '');
+    }
+    b.addEventListener('click', e => { if(REDUCED) return; const r = b.getBoundingClientRect(), d = Math.max(r.width, r.height), x = document.createElement('span');
+      x.className = 'ripple'; x.style.cssText = `width:${d}px;height:${d}px;left:${e.clientX-r.left-d/2}px;top:${e.clientY-r.top-d/2}px`; b.append(x); setTimeout(() => x.remove(), 650); });
+  });
+}
+// spark burst
+function sparks(el, n=26){
+  if(REDUCED || !el) return; const r = el.getBoundingClientRect(), cx = r.left+r.width/2, cy = r.top+r.height/2;
+  for(let i=0;i<n;i++){ const s = document.createElement('span'); s.className = 'spark'; document.body.append(s);
+    const a = Math.random()*Math.PI*2, v = 60+Math.random()*120, hue = 20+Math.random()*30;
+    s.style.background = `hsl(${hue},100%,60%)`;
+    s.animate([{transform:`translate(${cx}px,${cy}px) scale(1)`,opacity:1},{transform:`translate(${cx+Math.cos(a)*v}px,${cy+Math.sin(a)*v+40}px) scale(.2)`,opacity:0}],{duration:700+Math.random()*500,easing:'cubic-bezier(.2,.8,.2,1)'}).onfinish = () => s.remove(); }
+}
+// live ticker
+function renderTicker(){
+  const s = state?.snapshot, c = CITIES[city()], bc = BAND_C(); if(!s){ $('#ticker').innerHTML = ''; return; }
+  const items = s.zones.filter(z=>z.available).sort((a,b)=>b.peak_wbgt-a.peak_wbgt).map(zr => { const z = c.zones.find(x=>x.id===zr.zone), b = BANDS[zr.band];
+    return `<span class="it"><i style="color:${bc[zr.band]};background:${bc[zr.band]}"></i>${esc(z.name)} <span class="hi" style="color:var(--muted)">${esc(z.name_hi)}</span> <b>${zr.peak_wbgt}°</b> <span style="color:var(--muted)">${esc(b.label)}${zr.start?` · ${zr.start}–${zr.end}`:''}</span></span>`; }).join('');
+  $('#ticker').innerHTML = items + items;  // doubled for a seamless loop
+}
+// map heat field
+function heatField(){
+  const s = state?.snapshot, c = CITIES[city()], bc = BAND_C(); if(!s || !layer) return;
+  s.zones.forEach((zr, i) => { if(!zr.available) return; const z = c.zones.find(x=>x.id===zr.zone);
+    L.circle([z.lat, z.lon], {radius:2500+zr.band*1100, stroke:false, fillColor:bc[zr.band], fillOpacity:.22, interactive:false, className:'heatblob'}).addTo(layer)
+      .getElement()?.style.setProperty('animation-delay', `${(i%5)*.4}s`);
+  });
+}
+
+observeReveals(); bindTilt(); bindButtons();
+init().catch(e => toast('Failed to load: '+e.message,'bad'));
+</script>
+</body>
+</html>

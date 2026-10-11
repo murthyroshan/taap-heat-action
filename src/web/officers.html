@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Officers — Taap</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E🔥%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@500;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/app.css">
+</head>
+<body>
+<div class="bgfx"></div><div class="progress-top" id="readbar"></div>
+<nav id="nav" data-page="officers" data-city="1"></nav>
+<header class="page-hero">
+  <span class="eyebrow reveal">🧑‍💼 Control room</span>
+  <h1 class="reveal">Your department's <span class="heat-text">heat duties</span>, today.</h1>
+  <p class="lede reveal">Every action the plan assigned to you, with the reason it fired. Mark it done when it is in place — it goes on the public ledger with your name and the time.</p>
+</header>
+<div class="wrap">
+  <section class="card reveal">
+    <div class="grid3" style="align-items:end">
+      <div class="field"><label for="name">Your name</label><input id="name" placeholder="e.g. Asha, DJB North"></div>
+      <div class="field"><label for="code">Officer code</label><input id="code" type="password" placeholder="from your nodal officer"></div>
+      <div class="field"><label for="dept">Department</label><select id="dept"></select></div>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;align-items:center">
+      <div class="seg" id="seg"><span class="pill-bg"></span><button id="mLive" class="on">Live</button><button id="mReplay">Replay</button></div>
+      <input type="date" id="rdate" class="ctl" hidden>
+      <span class="note" id="summary"></span>
+    </div>
+  </section>
+  <div class="grid2">
+    <section class="card reveal"><h3>Open actions</h3><div class="progress"><div class="track"><i id="bar"></i></div><b id="pct">—</b></div><div class="acts" id="acts"></div></section>
+    <section class="card reveal" style="--d:.06s"><h3>Worker reports · today</h3><div id="reps"></div></section>
+  </div>
+</div>
+<footer id="foot"></footer>
+<script src="assets/core.js"></script>
+<script>
+const ICON = {water:'💧',labour:'👷',disaster:'🛟',health:'🏥'}, REP = {water:['🚱','No drinking water'],shade:['⛱️','No shade'],work:['⛔','Work not stopped'],ill:['🤒','Someone unwell']};
+const REP_ROLE = {water:'water',shade:'disaster',work:'labour',ill:'health'};
+let mode = 'live', state = null;
+const dept = () => T.$('#dept').value;
+function moveSeg(){ const on = T.$('#seg .on'), bg = T.$('#seg .pill-bg'); bg.style.left = on.offsetLeft+'px'; bg.style.width = on.offsetWidth+'px'; }
+function fillDepts(){ const c = T.cities[T.city()], saved = T.store.get('taap.dept');
+  T.$('#dept').innerHTML = '<option value="all">All departments (nodal)</option>' + Object.entries(c.roles).map(([k,v]) => `<option value="${k}">${T.esc(v)}</option>`).join('');
+  if(saved && (saved==='all' || c.roles[saved])) T.$('#dept').value = saved;
+  T.$('#rdate').min = c.replay.start; T.$('#rdate').max = c.replay.end; if(!T.$('#rdate').value) T.$('#rdate').value = c.replay.default; }
+async function load(){
+  const qs = new URLSearchParams({city:T.city(), mode}); if(mode==='replay') qs.set('date', T.$('#rdate').value);
+  try{ state = await T.api('/api/state?'+qs); }catch(e){ state = {snapshot:null, actions:[], reports:[]}; }
+  render();
+}
+function render(){
+  const c = T.cities[T.city()], tc = T.tierColors(), d = dept();
+  const acts = state.actions.filter(a => d==='all' || a.role===d).sort((a,b) => (a.status==='done') - (b.status==='done'));
+  const done = acts.filter(a => a.status==='done').length, pct = acts.length ? done/acts.length*100 : 0;
+  T.$('#bar').style.width = pct+'%'; T.$('#pct').textContent = acts.length ? `${done}/${acts.length}` : '—';
+  T.$('#summary').textContent = state.snapshot ? `${c.name} · ${state.snapshot.date} · plan tier ${state.snapshot.tier.toUpperCase()}` : 'No data for this day yet';
+  T.$('#acts').innerHTML = acts.length ? acts.map((a,i) => `<div class="act" style="--i:${i};--c:${tc[a.tier]}"><div class="ic">${ICON[a.role]||'📌'}</div>
+      <div><div class="t">${T.esc(a.text_rendered)}</div><div class="s">${T.esc(a.zone_name)} · ${T.esc(c.roles[a.role]||a.role)} · ${T.esc(a.ref)}</div></div>
+      <div style="text-align:right">${a.status==='done' ? `<span class="status-chip done">✓ Done</span><div class="s" style="margin-top:4px">${T.esc(a.done_by)} · ${T.fmtTime(a.done_at)}</div>`
+        : `<button class="primary" data-done="${T.esc(a.zone)}|${T.esc(a.action_id)}">Mark done</button>`}</div></div>`).join('')
+    : `<div class="empty">${state.snapshot && state.snapshot.tier==='green' ? 'The plan is not active today (green tier): no department tasks.' : 'No actions for this department.'}</div>`;
+  const reps = state.reports.filter(r => d==='all' || REP_ROLE[r.type]===d);
+  T.$('#reps').innerHTML = reps.length ? reps.map(r => `<div class="rep"><span style="font-size:20px">${(REP[r.type]||['📣'])[0]}</span><div class="grow"><b>${T.esc((REP[r.type]||['',r.type])[1])}</b><div class="note">${T.esc(r.zone_name)} · ${T.esc(r.time)}</div></div>
+      ${r.status==='resolved' ? `<span class="status-chip done">Resolved</span>` : `<button class="ghost" data-res="${T.esc(r.sk)}">Resolve</button>`}</div>`).join('')
+    : '<div class="empty">No worker reports for your department today.</div>';
+  T.$$('[data-done]').forEach(b => b.onclick = () => act('done', b, {zone:b.dataset.done.split('|')[0], action_id:b.dataset.done.split('|')[1], mode, date:state.snapshot.date}));
+  T.$$('[data-res]').forEach(b => b.onclick = () => act('resolve', b, {sk:b.dataset.res, date:T.todayIST()}));
+  T.buttons();
+}
+async function act(kind, btn, body){
+  const code = T.$('#code').value.trim(), name = T.$('#name').value.trim();
+  if(!code){ T.toast('Enter your officer code first','bad'); T.$('#code').focus(); return; }
+  btn.disabled = true;
+  try{ await T.api('/api/officer/'+kind, {...body, city:T.city(), code, name}); T.sparks(btn); T.toast(kind==='done' ? 'Marked done — it is on the public ledger' : 'Report resolved','good'); await load(); }
+  catch(e){ T.toast(e.message,'bad'); btn.disabled = false; }
+}
+(async function(){
+  await T.nav({onCity: () => { fillDepts(); load(); }});
+  T.$('#name').value = T.store.get('taap.officer') || ''; T.$('#code').value = T.store.get('taap.ocode') || '';
+  T.$('#name').onchange = () => T.store.set('taap.officer', T.$('#name').value); T.$('#code').onchange = () => T.store.set('taap.ocode', T.$('#code').value);
+  fillDepts();
+  T.$('#dept').onchange = () => { T.store.set('taap.dept', dept()); render(); };
+  const setMode = m => { mode = m; T.$('#mLive').classList.toggle('on', m==='live'); T.$('#mReplay').classList.toggle('on', m==='replay'); T.$('#rdate').hidden = m!=='replay'; moveSeg(); load(); };
+  T.$('#mLive').onclick = () => setMode('live'); T.$('#mReplay').onclick = () => setMode('replay'); T.$('#rdate').onchange = load;
+  moveSeg(); document.fonts && document.fonts.ready.then(moveSeg);
+  T.boot(); load(); setInterval(() => mode==='live' && load(), 60000);
+})();
+</script>
+</body>
+</html>

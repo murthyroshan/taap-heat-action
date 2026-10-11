@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Public ledger — Taap</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E🔥%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@500;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/app.css">
+</head>
+<body>
+<div class="bgfx"></div><div class="progress-top" id="readbar"></div>
+<nav id="nav" data-page="ledger" data-city="1"></nav>
+<header class="page-hero">
+  <span class="eyebrow reveal">🏛️ Public ledger</span>
+  <h1 class="reveal">Planned <span class="heat-text">vs done</span>.</h1>
+  <p class="lede reveal">Every action the Heat Action Plan triggered, which department owned it, whether it happened, and how long it took. Open to anyone — residents, reporters, auditors.</p>
+</header>
+<div class="wrap">
+  <section class="kpi-mini reveal" id="kpis"></section>
+  <div class="section-title reveal"><h2>Department scorecard</h2><p>Share of assigned actions confirmed done, and the median time to confirm.</p></div>
+  <section class="grid2" id="depts"></section>
+  <div class="section-title reveal"><h2>Day by day</h2><p id="dayNote"></p></div>
+  <section class="card reveal"><div style="overflow:auto"><table class="t"><thead><tr><th>Date</th><th>Mode</th><th>Plan tier</th><th>Worker band</th><th>Done</th><th style="width:30%"></th></tr></thead><tbody id="days"></tbody></table></div></section>
+  <div class="section-title reveal"><h2>Every action</h2><p><button class="ghost" id="csv">⬇ Download CSV</button></p></div>
+  <section class="card reveal"><div style="overflow:auto;max-height:520px"><table class="t"><thead><tr><th>Date</th><th>Zone</th><th>Action</th><th>Department</th><th>Status</th><th>By</th></tr></thead><tbody id="rows"></tbody></table></div></section>
+</div>
+<footer id="foot"></footer>
+<script src="assets/core.js"></script>
+<script>
+let L = null;
+async function load(){
+  try{ L = await T.api('/api/ledger?city='+T.city()); }catch(e){ L = {days:[], roles:[], rows:[]}; T.toast(e.message,'bad'); }
+  render();
+}
+function render(){
+  const c = T.cities[T.city()], tc = T.tierColors(), bc = T.bandColors();
+  const total = L.roles.reduce((s,r)=>s+r.total,0), done = L.roles.reduce((s,r)=>s+r.done,0);
+  T.$('#kpis').innerHTML = `<div><b id="k1">0</b><span>actions assigned</span></div><div><b id="k2">0</b><span>confirmed done</span></div><div><b id="k3">0</b><span>completion rate</span></div><div><b id="k4">0</b><span>days on record</span></div>`;
+  T.countUp(T.$('#k1'), total); T.countUp(T.$('#k2'), done); T.countUp(T.$('#k3'), total ? done/total*100 : 0, {suffix:'%'}); T.countUp(T.$('#k4'), L.days.length);
+  const gradeColor = r => r == null ? 'var(--line2)' : r >= 80 ? bc[0] : r >= 50 ? bc[1] : bc[3];
+  T.$('#depts').innerHTML = L.roles.length ? L.roles.map((r,i) => `<div class="card tilt reveal" style="--d:${i*.05}s"><div class="shine"></div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px"><h3 style="margin:0">${T.esc(r.label)}</h3><span class="big-num" style="font-size:40px;color:${gradeColor(r.rate)}">${r.rate==null?'–':r.rate+'%'}</span></div>
+      <div class="dept-bar"><i style="background:${gradeColor(r.rate)}" data-w="${r.rate||0}"></i></div>
+      <p class="note" style="margin:10px 0 0">${r.done} of ${r.total} done${r.median_minutes!=null?` · median ${r.median_minutes} min to confirm`:''}</p></div>`).join('')
+    : '<div class="empty">No actions recorded yet. Run a replay or wait for the plan to activate.</div>';
+  requestAnimationFrame(() => T.$$('.dept-bar i').forEach(i => i.style.width = i.dataset.w+'%'));
+  T.$('#dayNote').textContent = L.days.length ? `${L.days.length} day(s) with plan actions in ${c.name}` : '';
+  T.$('#days').innerHTML = L.days.map(d => `<tr><td>${T.esc(d.date)}</td><td>${d.mode==='replay'?'Replay':'Live'}</td><td>${T.pill(d.tier, tc[d.tier])}</td><td>${T.pill('band '+d.max_band, bc[d.max_band], d.max_band===4)}</td><td>${d.done}/${d.total}</td>
+      <td><div class="dept-bar"><i style="width:${d.total?d.done/d.total*100:0}%;background:${bc[0]}"></i></div></td></tr>`).join('') || '<tr><td colspan="6" class="note">Nothing yet.</td></tr>';
+  T.$('#rows').innerHTML = L.rows.map(r => `<tr><td>${T.esc(r.date)}${r.mode==='replay'?' <span class="note">(replay)</span>':''}</td><td>${T.esc(r.zone_name)}</td><td>${T.esc(r.text_rendered)}<div class="note">${T.esc(r.ref)}</div></td><td>${T.esc(c.roles[r.role]||r.role)}</td>
+      <td>${r.status==='done'?'<span class="status-chip done">Done</span>':'<span class="status-chip open">Open</span>'}</td><td>${T.esc(r.done_by||'')}<div class="note">${T.fmtTime(r.done_at)}</div></td></tr>`).join('') || '<tr><td colspan="6" class="note">Nothing yet.</td></tr>';
+  T.reveal(); T.tilt();
+}
+function csv(){
+  const cols = ['date','mode','zone_name','action_id','role','status','done_by','created_at','done_at','text_rendered','ref'];
+  const q = v => `"${String(v ?? '').replace(/"/g,'""')}"`;
+  const body = [cols.join(','), ...L.rows.map(r => cols.map(k => q(r[k])).join(','))].join('\n');
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([body], {type:'text/csv'})); a.download = `taap-ledger-${T.city()}.csv`; a.click();
+}
+(async function(){ await T.nav({onCity: load}); T.$('#csv').onclick = csv; T.boot(); load(); })();
+</script>
+</body>
+</html>

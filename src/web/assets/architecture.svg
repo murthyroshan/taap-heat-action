@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 560" font-family="Segoe UI, Roboto, Helvetica, Arial, sans-serif">
+  <style>
+    .box{fill:#fff;stroke:#c9c6bf;stroke-width:1.5;rx:10}
+    .aws{fill:#fff7ed;stroke:#ea580c;stroke-width:1.5}
+    .ext{fill:#f1f5f9;stroke:#94a3b8;stroke-width:1.5}
+    .t{font-size:15px;font-weight:700;fill:#17181a}
+    .s{font-size:12px;fill:#5d6168}
+    .h{font-size:13px;font-weight:700;fill:#ea580c;letter-spacing:.06em}
+    .ln{stroke:#5d6168;stroke-width:1.6;fill:none;marker-end:url(#a)}
+    .lbl{font-size:11px;fill:#5d6168}
+  </style>
+  <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#5d6168"/></marker></defs>
+  <rect width="1000" height="560" fill="#fbfaf8"/>
+  <text x="24" y="34" font-size="20" font-weight="800" fill="#c2410c">Taap: a Heat Action Plan, running on AWS</text>
+  <rect x="190" y="56" width="610" height="470" rx="14" fill="none" stroke="#ea580c" stroke-dasharray="6 5"/>
+  <text x="206" y="78" class="h">AWS · ap-south-1 · deployed with AWS SAM</text>
+
+  <!-- external -->
+  <rect x="20" y="110" width="150" height="70" rx="10" class="ext"/><text x="34" y="138" class="t">Open-Meteo</text><text x="34" y="158" class="s">forecast + ERA5 replay</text>
+  <rect x="20" y="300" width="150" height="88" rx="10" class="ext"/><text x="34" y="328" class="t">Telegram</text><text x="34" y="348" class="s">workers: voice + text</text><text x="34" y="366" class="s">officers: ✅ Done buttons</text>
+  <rect x="830" y="300" width="150" height="88" rx="10" class="ext"/><text x="844" y="328" class="t">Public / judges</text><text x="844" y="348" class="s">dashboard, CAP feed,</text><text x="844" y="366" class="s">Hindi posters</text>
+  <rect x="830" y="110" width="150" height="70" rx="10" class="ext"/><text x="844" y="138" class="t">SACHET-style</text><text x="844" y="158" class="s">alert systems (CAP 1.2)</text>
+
+  <!-- aws -->
+  <rect x="215" y="100" width="170" height="60" rx="10" class="aws"/><text x="229" y="126" class="t">EventBridge</text><text x="229" y="146" class="s">Scheduler · hourly (IST)</text>
+  <rect x="420" y="96" width="180" height="70" rx="10" class="aws"/><text x="434" y="122" class="t">TickFunction</text><text x="434" y="141" class="s">Lambda · WBGT engine →</text><text x="434" y="157" class="s">plan tier, bands, actions</text>
+  <rect x="420" y="230" width="180" height="70" rx="10" class="aws"/><text x="434" y="256" class="t">DynamoDB</text><text x="434" y="275" class="s">snapshots · actions · users</text><text x="434" y="291" class="s">reports · audit trail</text>
+  <rect x="640" y="96" width="140" height="60" rx="10" class="aws"/><text x="654" y="122" class="t">Amazon Polly</text><text x="654" y="142" class="s">Hindi voice notes</text>
+  <rect x="215" y="300" width="170" height="70" rx="10" class="aws"/><text x="229" y="326" class="t">BotFunction</text><text x="229" y="345" class="s">Lambda function URL ·</text><text x="229" y="361" class="s">Telegram webhook</text>
+  <rect x="610" y="300" width="175" height="70" rx="10" class="aws"/><text x="624" y="326" class="t">ApiFunction</text><text x="624" y="345" class="s">Lambda function URL ·</text><text x="624" y="361" class="s">dashboard, API, CAP, replay</text>
+  <rect x="400" y="420" width="210" height="76" rx="10" class="aws"/><text x="414" y="446" class="t">AgentFunction</text><text x="414" y="465" class="s">Strands Agents (open source)</text><text x="414" y="481" class="s">read-only tools · plan-PDF import</text>
+  <rect x="640" y="430" width="140" height="56" rx="10" class="aws"/><text x="654" y="455" class="t">Amazon Bedrock</text><text x="654" y="474" class="s">Nova Lite (APAC)</text>
+  <text x="215" y="510" class="s">CloudWatch logs for every function</text>
+
+  <!-- flows -->
+  <path class="ln" d="M385 130 H418"/>
+  <path class="ln" d="M170 145 C 300 200, 380 180, 420 150"/><text x="232" y="196" class="lbl">forecast</text>
+  <path class="ln" d="M600 125 H638"/>
+  <path class="ln" d="M510 166 V228"/>
+  <path class="ln" d="M440 166 C 330 220, 140 240, 95 298"/><text x="250" y="232" class="lbl">alerts + action tasks</text>
+  <path class="ln" d="M170 345 H213"/><text x="176" y="362" class="lbl">updates</text>
+  <path class="ln" d="M385 320 C 410 300, 420 290, 430 300"/>
+  <path class="ln" d="M610 320 C 600 305, 595 300, 590 300"/>
+  <path class="ln" d="M785 345 H828"/>
+  <path class="ln" d="M720 300 C 760 240, 800 190, 840 180"/><text x="742" y="230" class="lbl">CAP XML</text>
+  <path class="ln" d="M300 370 C 320 440, 360 458, 398 458"/><text x="304" y="430" class="lbl">/ask</text>
+  <path class="ln" d="M690 370 C 680 420, 640 440, 612 448"/>
+  <path class="ln" d="M610 458 H638"/>
+  <path class="ln" d="M505 420 V302"/>
+</svg>

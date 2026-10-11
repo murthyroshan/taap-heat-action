@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Method — Taap</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E🔥%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@500;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/app.css">
+</head>
+<body>
+<div class="bgfx"></div><div class="progress-top" id="readbar"></div>
+<nav id="nav" data-page="method"></nav>
+<header class="page-hero">
+  <span class="eyebrow reveal">🔬 Method</span>
+  <h1 class="reveal">How Taap measures heat, <span class="heat-text">and what it doesn't claim.</span></h1>
+</header>
+<div class="wrap">
+  <section class="card reveal prose">
+    <h3>Why WBGT, not temperature</h3>
+    <p>Bodies cool by sweating; humidity stops sweat evaporating, and direct sun adds heat. Wet Bulb Globe Temperature (WBGT) combines air temperature, humidity, wind and solar radiation into the number used in occupational heat-stress standards. Taap computes outdoor WBGT every hour for each zone with the Liljegren (2008) model, from Open-Meteo forecasts. It deliberately avoids the “simplified WBGT” (temperature and humidity only), which overstates heat stress in humid air.</p>
+    <p>On a humid October afternoon in Delhi, the plan's temperature-only tier can be green while WBGT is near 30°C — for heavy labour, that means 15 minutes of work an hour.</p>
+  </section>
+  <section class="card reveal"><h3>From WBGT to an instruction (ACGIH, heavy acclimatised work)</h3><div style="overflow:auto"><table class="t"><thead><tr><th>Band</th><th>WBGT from</th><th>Each hour</th><th>हिंदी</th></tr></thead><tbody id="bands"></tbody></table></div><p class="note">Guidance, not medical advice. Thresholds are configurable per city.</p></section>
+  <div class="grid2">
+    <section class="card reveal prose"><h3>Two scales, side by side</h3><p><b>Plan tier</b> (green → red) follows the city's own Heat Action Plan thresholds on daily maximum temperature, raised one level after a hot night. <b>Worker band</b> (0 → 4) comes from hourly WBGT. Departments are tasked only once the plan is active; workers get guidance every day.</p>
+      <h3>Alert fatigue</h3><p>Workers get a push alert from band 2 and only when risk rises; nothing is sent between 9 PM and 6 AM; no alert once the day's danger window has passed.</p></section>
+    <section class="card reveal prose" style="--d:.06s"><h3>What we don't claim</h3><ul>
+      <li>Zones are ~10 km apart to match ~9 km forecast models. They are not wards.</li>
+      <li>Values are modelled, not station readings. The replay uses ERA5 reanalysis, which runs below station peaks.</li>
+      <li>IMD recorded 49.9°C at Mungeshpur and Narela on 28 May 2024; the 52.9°C reading was a sensor error and is not used.</li>
+      <li>The AI assistant never decides alerts or actions — those are deterministic plan rules. It only answers questions from live data.</li></ul></section>
+  </div>
+  <section class="card reveal"><h3>Architecture</h3><img src="assets/architecture.svg" alt="Architecture: EventBridge schedules a Lambda that computes WBGT, stores state in DynamoDB, alerts via Polly and Telegram; a Strands agent on Bedrock answers officers; a public API serves dashboards and the CAP feed." style="width:100%;border-radius:12px;background:#fbfaf8">
+    <p class="note">Runs two ways from the same code: on AWS (SAM template: EventBridge, Lambda, DynamoDB, Polly, Bedrock) or on one machine with no AWS account (Strands Agents — AWS open source — on Groq or a local model, SQLite, Telegram long polling).</p></section>
+  <section class="card reveal prose"><h3>Sources</h3><ul>
+    <li>Liljegren et al. (2008), <i>Modeling the wet bulb globe temperature using standard meteorological measurements</i>, J. Occup. Environ. Hyg. 5:645–655.</li>
+    <li>ACGIH TLV screening criteria for heat stress (work–rest by WBGT).</li>
+    <li>Centre for Policy Research (2023), <a href="https://cprindia.org/wp-content/uploads/2023/03/Heat-Report_Final_27March-23.pdf">How is India Adapting to Heatwaves?</a></li>
+    <li>Hess et al. (2018), <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC6236972/">Ahmedabad Heat Action Plan evaluation</a> (estimate; warning-level results not statistically significant).</li>
+    <li>IMD press release, 29 May 2024 (<a href="https://internal.imd.gov.in/press_release/20240529_pr_3029.pdf">PDF</a>); Lancet Countdown 2025 (labour hours lost).</li>
+    <li>Delhi Heat Action Plan (DDMA); Delhi LG order of 29 May 2024 (paid noon–3 PM break).</li>
+    <li>Weather: <a href="https://open-meteo.com">Open-Meteo</a> forecast and ERA5 archive, CC-BY 4.0. Maps © OpenStreetMap contributors.</li></ul></section>
+  <section class="card reveal prose"><h3>Next</h3><ul><li>WhatsApp and missed-call / IVR channels for feature phones.</li><li>Ward vulnerability layers from land-surface temperature.</li><li>Bias correction against IMD station readings.</li><li>Parametric heat-insurance triggers for informal workers.</li></ul></section>
+</div>
+<footer id="foot"></footer>
+<script src="assets/core.js"></script>
+<script>
+(async function(){ await T.nav(); const bc = T.bandColors();
+  T.$('#bands').innerHTML = T.bands.map(b => `<tr><td>${T.pill(b.band+' · '+b.label, bc[b.band], b.band===4)}</td><td>${b.min==null?'—':b.min+'°C'}</td><td>${b.band===0?'Normal work':b.band>=4?'Stop heavy work':`${b.work} min work · ${b.rest} min rest`}</td><td class="hi">${T.esc(b.label_hi)}</td></tr>`).join('');
+  T.boot(); })();
+</script>
+</body>
+</html>

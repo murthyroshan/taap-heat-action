@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="hi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Workers — Taap heat alerts</title>
+<meta name="description" content="Today's heat risk and work–rest schedule for your area, in Hindi, read aloud.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E🔥%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@500;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/app.css">
+<style>
+.wk{max-width:760px;margin:0 auto;padding:24px 16px 60px;display:grid;gap:18px}
+.lang{display:inline-flex;gap:6px}
+.lang button{border:1px solid var(--line2);background:var(--card);border-radius:12px;padding:8px 14px;font-weight:700;cursor:pointer}
+.lang button.on{background:linear-gradient(135deg,var(--ember),var(--ember3));color:#fff;border-color:transparent}
+.status-card{position:relative;overflow:hidden;border-radius:24px;padding:24px;color:#fff;background:linear-gradient(140deg,var(--c,#555),color-mix(in srgb,var(--c,#555) 45%,#000));box-shadow:0 30px 70px -30px var(--c,#000)}
+.status-card::after{content:"";position:absolute;right:-60px;top:-60px;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.25),transparent 70%);animation:breathe 4s ease-in-out infinite}
+.status-card .z{font-size:15px;opacity:.9;font-weight:600}
+.status-card .head{font-size:clamp(30px,7vw,44px);font-weight:800;letter-spacing:-.02em;line-height:1.1;margin:8px 0}
+.status-card .rule{background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.25);color:#fff;font-size:clamp(18px,4.5vw,22px);margin:14px 0 0}
+.actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.actions a,.actions button{display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;border-radius:16px;font-weight:800;font-size:16px;text-decoration:none;cursor:pointer;border:1px solid var(--line2);background:var(--card);color:var(--ink)}
+.actions .wa{background:#25d366;color:#06240f;border:0}
+.actions .speak{background:linear-gradient(135deg,var(--ember),var(--ember3));color:#fff;border:0}
+.sos{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px;border-radius:18px;border:2px solid #ff3b30;background:rgba(255,59,48,.08)}
+.sos b{font-size:40px;color:#ff3b30;letter-spacing:-.03em}
+.msg{white-space:pre-wrap;font-size:15.5px;line-height:1.6}
+.speaking{animation:pulseBtn 1s ease-in-out infinite}
+@keyframes pulseBtn{50%{filter:brightness(1.25);transform:scale(1.02)}}
+</style>
+</head>
+<body class="hi">
+<div class="bgfx"></div><div class="progress-top" id="readbar"></div>
+<nav id="nav" data-page="workers" data-city="1"></nav>
+<div class="wk">
+  <div class="reveal" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+    <div class="lang" role="group" aria-label="Language"><button data-l="hi" class="on">हिंदी</button><button data-l="en">English</button></div>
+    <select id="zone" class="ctl" aria-label="Zone"></select>
+  </div>
+  <div class="status-card reveal" id="card"><div class="skel"></div><div class="skel" style="width:60%"></div></div>
+  <div class="actions reveal">
+    <button class="speak" id="speak">🔊 <span data-t="listen">सुनें</span></button>
+    <a class="wa" id="wa" target="_blank" rel="noopener">📲 <span data-t="share">WhatsApp पर भेजें</span></a>
+    <a id="poster" target="_blank">🖨️ <span data-t="poster">पोस्टर</span></a>
+    <a id="bot" target="_blank" rel="noopener" hidden>✈️ <span data-t="bot">रोज़ अलर्ट पाएँ</span></a>
+  </div>
+  <section class="card reveal"><h3 data-t="today">आज, घंटे के हिसाब से</h3><div id="hours"></div></section>
+  <section class="card reveal"><h3 data-t="full">पूरा संदेश</h3><div class="msg" id="msg"></div></section>
+  <div class="sos reveal"><div><div style="font-weight:800" data-t="sos">चक्कर, उल्टी, भ्रम या बेहोशी?</div><div class="note" data-t="sos2">छाँव में ले जाएँ, ठंडा पानी डालें, और तुरंत कॉल करें</div></div><b>112</b></div>
+  <p class="note" data-t="note">भारी काम के लिए मार्गदर्शन (WBGT, ACGIH सीमाएँ)। चिकित्सा सलाह नहीं।</p>
+</div>
+<footer id="foot"></footer>
+<script src="assets/core.js"></script>
+<script>
+const L = {
+  hi:{listen:'सुनें',share:'WhatsApp पर भेजें',poster:'पोस्टर',bot:'रोज़ अलर्ट पाएँ',today:'आज, घंटे के हिसाब से',full:'पूरा संदेश',sos:'चक्कर, उल्टी, भ्रम या बेहोशी?',sos2:'छाँव में ले जाएँ, ठंडा पानी डालें, और तुरंत कॉल करें',note:'भारी काम के लिए मार्गदर्शन (WBGT, ACGIH सीमाएँ)। चिकित्सा सलाह नहीं।',normal:'सामान्य काम',stop:'भारी काम बंद',work:'मिनट काम',rest:'मिनट आराम',nodata:'अभी जानकारी उपलब्ध नहीं।',low:'आज गर्मी का खतरा कम है',stopnow:'भारी काम बंद रखें'},
+  en:{listen:'Listen',share:'Share on WhatsApp',poster:'Poster',bot:'Daily alerts',today:'Today, hour by hour',full:'Full message',sos:'Dizzy, vomiting, confused or fainting?',sos2:'Move to shade, pour cool water, and call now',note:'Guidance for heavy work (WBGT, ACGIH limits). Not medical advice.',normal:'Normal work',stop:'Stop heavy work',work:'min work',rest:'min rest',nodata:'No data yet.',low:'Low heat risk today',stopnow:'Stop heavy work'},
+};
+let lang = T.store.get('taap.lang') || 'hi', data = null, meta = {};
+const t = k => L[lang][k];
+function applyLang(){
+  document.documentElement.lang = lang; document.body.classList.toggle('hi', lang==='hi');
+  T.$$('.lang button').forEach(b => b.classList.toggle('on', b.dataset.l===lang));
+  T.$$('[data-t]').forEach(el => el.textContent = t(el.dataset.t));
+}
+function fillZones(){
+  const c = T.cities[T.city()], sel = T.$('#zone'), saved = T.store.get('taap.zone.'+c.id);
+  sel.innerHTML = c.zones.map(z => `<option value="${z.id}">${T.esc(lang==='hi'?z.name_hi:z.name)}</option>`).join('');
+  if(saved && c.zones.some(z => z.id===saved)) sel.value = saved;
+}
+async function load(){
+  const c = T.cities[T.city()], zone = T.$('#zone').value; T.store.set('taap.zone.'+c.id, zone);
+  try{ data = await T.api(`/api/worker?city=${c.id}&zone=${zone}&lang=${lang}`); }catch(e){ data = null; T.toast(e.message,'bad'); }
+  render();
+}
+function render(){
+  const bc = T.bandColors(), card = T.$('#card');
+  if(!data || !data.risk){ card.style.setProperty('--c','#555'); card.innerHTML = `<div class="head">${t('nodata')}</div>`; T.$('#hours').innerHTML = ''; T.$('#msg').textContent = data?.text || ''; return; }
+  const r = data.risk, b = data.bands[r.band], z = data.zone;
+  card.style.setProperty('--c', bc[r.band]);
+  const head = r.band===0 ? t('low') : (lang==='hi' ? b.label_hi : b.label);
+  const rule = r.band===0 ? t('normal') : r.band>=4 ? `${r.start}–${r.end}: ${t('stopnow')}` : `${r.start}–${r.end}: ${b.work} ${t('work')} · ${b.rest} ${t('rest')}`;
+  card.innerHTML = `<div class="z">📍 ${T.esc(lang==='hi'?z.name_hi:z.name)} · ${T.esc(data.date)}</div><div class="head">${T.esc(head)}</div>
+    <div style="display:flex;gap:18px;flex-wrap:wrap;opacity:.95"><span>WBGT <b>${r.peak_wbgt}°C</b></span><span>${lang==='hi'?'अधिकतम':'Max'} <b>${r.tmax}°C</b></span>${r.hot_night?`<span>🌙 ${lang==='hi'?'गर्म रात':'Hot night'}</span>`:''}</div>
+    <div class="rule">${T.esc(rule)}</div>`;
+  const nowH = +new Date().toLocaleString('en-GB',{hour:'2-digit',hour12:false,timeZone:'Asia/Kolkata'});
+  T.$('#hours').innerHTML = r.hourly.filter(h => h.hour>=6 && h.hour<=20).map(h => { const hb = data.bands[h.band];
+    const txt = h.band===0 ? t('normal') : h.band>=4 ? t('stop') : `${hb.work} ${t('work')} · ${hb.rest} ${t('rest')}`;
+    return `<div class="hour-row${h.hour===nowH?' now':''}"><span class="h">${String(h.hour).padStart(2,'0')}:00</span><span class="sw" style="background:${bc[h.band]}"></span><span><b>${T.esc(txt)}</b> <span class="note">· ${h.temp}°C · WBGT ${h.wbgt}°</span></span></div>`; }).join('');
+  T.$('#msg').textContent = data.text;
+  T.$('#wa').href = 'https://wa.me/?text=' + encodeURIComponent(data.text + '\n\n— Taap');
+  T.$('#poster').href = (T.STATIC ? '#' : `/poster?city=${T.city()}&zone=${z.id}&mode=live`);
+}
+function speak(){
+  if(!('speechSynthesis' in window)){ T.toast('Voice is not supported on this device','bad'); return; }
+  const btn = T.$('#speak');
+  if(speechSynthesis.speaking){ speechSynthesis.cancel(); btn.classList.remove('speaking'); return; }
+  const text = data?.voice || data?.text; if(!text) return;
+  const u = new SpeechSynthesisUtterance(text.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu,''));
+  u.lang = lang==='hi' ? 'hi-IN' : 'en-IN'; u.rate = .95;
+  const v = speechSynthesis.getVoices().find(v => v.lang.toLowerCase().startsWith(lang==='hi'?'hi':'en-in')) || speechSynthesis.getVoices().find(v => v.lang.toLowerCase().startsWith(lang));
+  if(v) u.voice = v; else if(lang==='hi') T.toast('No Hindi voice installed — using the default voice');
+  u.onend = u.onerror = () => btn.classList.remove('speaking');
+  btn.classList.add('speaking'); speechSynthesis.speak(u);
+}
+(async function(){
+  meta = await T.api('/api/meta').catch(() => ({}));
+  await T.nav({onCity: () => { fillZones(); load(); }});
+  if(meta.bot_username){ const b = T.$('#bot'); b.hidden = false; b.href = 'https://t.me/' + meta.bot_username; }
+  applyLang(); fillZones();
+  T.$('#zone').onchange = load;
+  T.$$('.lang button').forEach(b => b.onclick = () => { lang = b.dataset.l; T.store.set('taap.lang', lang); applyLang(); fillZones(); load(); });
+  T.$('#speak').onclick = speak;
+  if('speechSynthesis' in window) speechSynthesis.getVoices();
+  T.boot(); load();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>City plans — Taap</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E🔥%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@500;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/app.css">
+</head>
+<body>
+<div class="bgfx"></div><div class="progress-top" id="readbar"></div>
+<nav id="nav" data-page="plans" data-city="1"></nav>
+<header class="page-hero">
+  <span class="eyebrow reveal">🗺️ Plans as code</span>
+  <h1 class="reveal">A PDF nobody reads, <span class="heat-text">turned into rules that run.</span></h1>
+  <p class="lede reveal">Each city's Heat Action Plan becomes a small config: thresholds, departments and actions — every rule with its source. Adding a city needs no code.</p>
+</header>
+<div class="wrap">
+  <section class="card reveal"><h3 id="pname">Plan</h3>
+    <div class="scale" id="scale"></div><div id="scaleLbl" class="note" style="display:flex;justify-content:space-between"></div>
+    <div class="kpi-mini" style="margin-top:16px" id="rules"></div>
+  </section>
+  <div class="grid2">
+    <section class="card reveal"><h3>Actions and triggers</h3><div style="overflow:auto"><table class="t"><thead><tr><th>When</th><th>Owner</th><th>Action</th></tr></thead><tbody id="actions"></tbody></table></div></section>
+    <section class="card reveal" style="--d:.06s"><h3>Zones</h3><div style="overflow:auto;max-height:420px"><table class="t"><thead><tr><th>Zone</th><th>हिंदी</th><th>Lat, Lon</th></tr></thead><tbody id="zones"></tbody></table></div><div class="note" id="notes" style="margin-top:12px"></div></section>
+  </div>
+  <div class="section-title reveal"><h2>Add a city from its PDF</h2><p>The model drafts it; a validator checks it; a person approves it.</p></div>
+  <section class="card reveal">
+    <label class="drop" id="drop"><input type="file" id="pdf" accept="application/pdf" hidden><div style="font-size:28px">📄</div><b id="dropLabel">Drop a Heat Action Plan PDF here, or click to choose</b><div class="note">Up to 4 MB · needs the admin token</div></label>
+    <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap"><input id="token" type="password" class="ctl" placeholder="Admin token"><button class="primary" id="importBtn">Draft config</button>
+      <a class="ghost" target="_blank" rel="noopener" href="https://heathealth.info/wp-content/uploads/ahmedabad-heat-action-plan-2018.pdf">Try Ahmedabad's 2018 plan ↗</a></div>
+    <div id="importOut" style="margin-top:12px"></div>
+  </section>
+</div>
+<footer id="foot"></footer>
+<script src="assets/core.js"></script>
+<script>
+const ICON = {water:'💧',labour:'👷',disaster:'🛟',health:'🏥'};
+function render(){
+  const c = T.cities[T.city()], tc = T.tierColors(), bc = T.bandColors(), t = c.tiers;
+  T.$('#pname').textContent = c.plan_name;
+  const lo = 35, hi = 50, w = v => ((Math.min(hi,v)-lo)/(hi-lo)*100);
+  T.$('#scale').innerHTML = `<div style="flex:0 0 ${w(t.yellow)}%;background:${tc.green}"></div><div style="flex:0 0 ${w(t.orange)-w(t.yellow)}%;background:${tc.yellow}"></div><div style="flex:0 0 ${w(t.red)-w(t.orange)}%;background:${tc.orange}"></div><div style="flex:1;background:${tc.red}"></div>`;
+  T.$('#scaleLbl').innerHTML = `<span>${lo}°C</span><span>yellow ≥ ${t.yellow}°</span><span>orange ≥ ${t.orange}°</span><span>red ≥ ${t.red}°</span><span>${hi}°C</span>`;
+  T.$('#rules').innerHTML = `<div><b>${c.hot_night_c}°C</b><span>hot night → tier +1</span></div><div><b>${(c.actions_min_tier||'yellow')}</b><span>departments tasked from</span></div><div><b>band ${c.alert_min_band||2}</b><span>worker push alerts from</span></div><div><b>${c.zones.length}</b><span>zones</span></div>`;
+  T.$('#actions').innerHTML = c.actions.map(a => `<tr><td>${a.when.tier?T.pill(a.when.tier+'+', tc[a.when.tier]):''} ${a.when.band?T.pill('band '+a.when.band+'+', bc[a.when.band], a.when.band===4):''}</td><td>${ICON[a.role]||'📌'} ${T.esc(c.roles[a.role]||a.role)}</td><td>${T.esc(a.text.replace(/\{zone\}/g,'‹zone›').replace(/\{start\}/g,'‹start›').replace(/\{end\}/g,'‹end›'))}<div class="note">${T.esc(a.ref)}</div></td></tr>`).join('');
+  T.$('#zones').innerHTML = c.zones.map(z => `<tr><td>${T.esc(z.name)}</td><td class="hi">${T.esc(z.name_hi)}</td><td style="font-family:'JetBrains Mono',monospace">${z.lat}, ${z.lon}</td></tr>`).join('');
+  T.$('#notes').innerHTML = c.notes.map(n => '• '+T.esc(n)).join('<br>');
+}
+function setupDrop(){
+  const d = T.$('#drop'), f = T.$('#pdf');
+  const show = () => T.$('#dropLabel').textContent = f.files[0] ? `📎 ${f.files[0].name} (${(f.files[0].size/1048576).toFixed(1)} MB)` : 'Drop a Heat Action Plan PDF here, or click to choose';
+  f.onchange = show;
+  ['dragenter','dragover'].forEach(ev => d.addEventListener(ev, e => { e.preventDefault(); d.classList.add('over'); }));
+  ['dragleave','drop'].forEach(ev => d.addEventListener(ev, e => { e.preventDefault(); d.classList.remove('over'); }));
+  d.addEventListener('drop', e => { if(e.dataTransfer.files[0]){ f.files = e.dataTransfer.files; show(); } });
+}
+async function importPlan(){
+  const f = T.$('#pdf').files[0], token = T.$('#token').value.trim(), out = T.$('#importOut');
+  if(!f) return T.toast('Choose a PDF first','bad'); if(!token) return T.toast('Enter the admin token','bad'); if(f.size > 4*1024*1024) return T.toast('PDF must be under 4 MB','bad');
+  T.store.set('taap.token', token);
+  out.innerHTML = '<div class="skel"></div><div class="skel" style="width:70%"></div><p class="note">Reading the plan… (up to a minute)</p>'; T.$('#importBtn').disabled = true;
+  try{
+    const b64 = await new Promise((ok, bad) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1]); r.onerror = bad; r.readAsDataURL(f); });
+    const res = await T.api('/api/plan-import', {token, pdf_b64:b64});
+    if(res.error){ out.innerHTML = `<div class="empty" style="color:#ff6961">${T.esc(res.error)}</div>`; return; }
+    const json = JSON.stringify(res.draft, null, 2), url = URL.createObjectURL(new Blob([json], {type:'application/json'}));
+    out.innerHTML = (res.problems.length ? `<p style="color:#ff6961;font-weight:700">Needs fixing before it can run:</p><ul>${res.problems.map(p=>`<li>${T.esc(p)}</li>`).join('')}</ul>` : '<p style="color:var(--b0);font-weight:700">✓ Valid structure. Check thresholds and duties against the PDF, then add zones.</p>')
+      + `<p><a class="ghost" href="${url}" download="${T.esc(res.draft.id||'city')}.json">⬇ Download draft config</a></p><pre>${T.esc(json)}</pre>`;
+    T.sparks(T.$('#importBtn')); T.toast('Draft config ready','good');
+  }catch(e){ out.innerHTML = `<div class="empty" style="color:#ff6961">Import failed: ${T.esc(e.message)}</div>`; }
+  finally{ T.$('#importBtn').disabled = false; }
+}
+(async function(){ await T.nav({onCity: render}); T.$('#token').value = T.store.get('taap.token') || ''; setupDrop(); T.$('#importBtn').onclick = importPlan; render(); T.boot(); })();
+</script>
+</body>
+</html>

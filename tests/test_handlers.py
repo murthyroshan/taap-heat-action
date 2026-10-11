@@ -280,3 +280,31 @@ def test_model_provider_selection(monkeypatch):
     assert type(m).__name__ == "OpenAIModel" and m.config["model_id"] == "openai/gpt-oss-120b"
     monkeypatch.setenv("MODEL_PROVIDER", "ollama")
     assert type(agent.make_model()).__name__ == "OllamaModel"
+
+
+def test_pages_and_assets_are_served():
+    st = store.MemoryStore()
+    for path in api.PAGES:
+        if os.path.exists(os.path.join(api.WEB_DIR, api.PAGES[path] + ".html")):
+            assert api.route("GET", path, {}, {}, st)["statusCode"] == 200, path
+    css = api.route("GET", "/assets/app.css", {}, {}, st)
+    assert css["statusCode"] == 200 and css["headers"]["Content-Type"].startswith("text/css")
+    for bad in ("/assets/../handlers/api.py", "/assets/x.py", "/assets/missing.css"):
+        assert api.route("GET", bad, {}, {}, st)["statusCode"] == 404
+
+
+def test_officer_web_console_and_ledger(monkeypatch):
+    monkeypatch.setenv("OFFICER_CODE", "heat2026")
+    st = store.MemoryStore()
+    _live(st)
+    act = store.list_actions(st, "delhi", "live", engine.today_ist())[0]
+    body = {"city": "delhi", "mode": "live", "date": engine.today_ist(), "zone": act["zone"], "action_id": act["action_id"], "name": "Asha"}
+    assert api.route("POST", "/api/officer/done", {}, {**body, "code": "nope"}, st)["statusCode"] == 403
+    ok = api.route("POST", "/api/officer/done", {}, {**body, "code": "heat2026"}, st)
+    assert ok["statusCode"] == 200 and json.loads(ok["body"])["action"]["done_by"] == "Asha"
+    led = json.loads(api.route("GET", "/api/ledger", {"city": "delhi"}, {}, st)["body"])
+    role = next(r for r in led["roles"] if r["role"] == act["role"])
+    assert role["done"] == 1 and role["total"] >= 1 and led["days"][0]["done"] == 1
+    st.put(f"REP#delhi#{engine.today_ist()}", "120000#5", {"type": "water", "zone_name": "Narela", "status": "open"})
+    res = api.route("POST", "/api/officer/resolve", {}, {"code": "heat2026", "city": "delhi", "date": engine.today_ist(), "sk": "120000#5"}, st)
+    assert json.loads(res["body"])["report"]["status"] == "resolved"

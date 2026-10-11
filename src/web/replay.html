@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>2024 heatwave replay — Taap</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E🔥%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@500;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/app.css">
+</head>
+<body>
+<div class="bgfx"></div><div class="progress-top" id="readbar"></div>
+<nav id="nav" data-page="replay" data-city="1"></nav>
+<header class="page-hero">
+  <span class="eyebrow reveal">🎞️ Replay</span>
+  <h1 class="reveal">The <span class="heat-text" id="hTitle">2024 heatwave</span>, day by day.</h1>
+  <p class="lede reveal">What happened, run through the plan's own rules: which zones crossed the line, when workers needed to stop, how many actions departments would have owned.</p>
+</header>
+<div class="wrap">
+  <section class="card reveal">
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+      <button class="primary" id="play">▶ Play</button>
+      <input type="range" id="day" class="slider" min="0" max="0" value="0" style="flex:1;min-width:200px" aria-label="Day">
+      <b id="dayLabel" style="font-family:'JetBrains Mono',monospace;min-width:110px">—</b>
+    </div>
+    <svg id="chart" viewBox="0 0 1000 150" preserveAspectRatio="none" style="width:100%;height:150px;margin-top:12px"></svg>
+    <div class="legend"><span><i style="background:var(--ember2)"></i>daily max temperature (modelled)</span><span><i style="background:var(--b4)"></i>peak WBGT</span><span>| outlined = reference day</span></div>
+  </section>
+  <div class="grid2" style="grid-template-columns:minmax(0,1.4fr) minmax(0,1fr)">
+    <section class="card reveal"><div id="map" style="height:500px"></div><div class="legend" id="legend"></div></section>
+    <section class="card reveal" style="--d:.06s">
+      <h3 id="sideDate">—</h3>
+      <div style="display:flex;gap:6px;flex-wrap:wrap" id="sidePills"></div>
+      <div class="kpi-mini" style="margin-top:14px" id="sideNums"></div>
+      <div class="rule" id="story" style="margin-top:14px">Press play.</div>
+      <p class="note" id="caveat"></p>
+    </section>
+  </div>
+  <section class="card reveal" id="summary"></section>
+</div>
+<footer id="foot"></footer>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="assets/core.js"></script>
+<script>
+let B = null, idx = 0, timer = null, map, layer;
+function draw(){
+  const d = B.days[idx], c = T.cities[T.city()], bc = T.bandColors(), tc = T.tierColors();
+  T.$('#day').value = idx; T.$('#dayLabel').textContent = d.date;
+  layer.clearLayers();
+  c.zones.forEach(z => { const r = d.zones[z.id]; if(!r) return;
+    L.circle([z.lat, z.lon], {radius:2500+r.band*1100, stroke:false, fillColor:bc[r.band], fillOpacity:.25, interactive:false, className:'heatblob'}).addTo(layer);
+    const icon = L.divIcon({className:'', iconSize:[26,26], iconAnchor:[13,13], html:`<div class="zm" style="--c:${bc[r.band]};--tier:${tc[r.tier]};--sp:${(2.8-r.band*.45).toFixed(2)}s"><span class="pulse"></span><span class="pulse p2"></span><span class="dot"></span></div>`});
+    L.marker([z.lat, z.lon], {icon}).bindTooltip(`<b>${T.esc(z.name)}</b><br>WBGT ${r.wbgt}°C · band ${r.band}<br>Tmax ${r.tmax}°C · ${r.tier}${r.hot_night?' · hot night':''}`, {className:'tip', direction:'top'}).addTo(layer);
+    L.tooltip({permanent:true, direction:'bottom', offset:[0,14], className:'zl'}).setLatLng([z.lat, z.lon]).setContent(T.esc(z.name)).addTo(layer);
+  });
+  const b = T.bands[d.max_band];
+  T.$('#sideDate').textContent = new Date(d.date+'T00:00:00').toLocaleDateString('en-IN',{weekday:'long', day:'numeric', month:'long', year:'numeric'});
+  T.$('#sidePills').innerHTML = `${T.pill('plan tier '+d.tier, tc[d.tier])} ${T.pill('band '+d.max_band+' · '+b.label, bc[d.max_band], d.max_band===4)}`;
+  T.$('#sideNums').innerHTML = `<div><b>${d.tmax}°</b><span>max temperature</span></div><div><b>${d.peak_wbgt}°</b><span>peak WBGT</span></div><div><b>${d.zones_band3}/${Object.keys(d.zones).length}</b><span>zones at band ≥3</span></div><div><b>${d.actions}</b><span>plan actions assigned</span></div>`;
+  const ref = B.reference_event || {};
+  const worst = Object.entries(d.zones).sort((a,b) => b[1].wbgt-a[1].wbgt)[0];
+  const wz = worst && c.zones.find(z => z.id===worst[0]);
+  let story = d.max_band >= 4 ? `Heavy outdoor work should stop in ${d.zones_band3} zones. Hottest: ${wz?wz.name:''} (${worst[1].start}–${worst[1].end}).`
+            : d.max_band >= 2 ? `Work–rest cycles needed across the city; ${wz?wz.name:''} is worst.` : 'Manageable heat: normal work with water breaks.';
+  if(d.hot_night_zones) story += ` ${d.hot_night_zones} zone(s) had no night-time relief, so the plan escalated.`;
+  if(d.date === ref.date) story = '📍 ' + ref.text + ' ' + story;
+  T.$('#story').textContent = story; T.$('#story').style.setProperty('--c', bc[d.max_band]);
+  T.$('#cur') && T.$('#cur').setAttribute('x', (idx/(B.days.length-1||1))*1000 - 2);
+}
+function chart(){
+  const ds = B.days, n = ds.length, tmax = ds.map(d=>d.tmax), wb = ds.map(d=>d.peak_wbgt);
+  const lo = Math.min(...wb)-2, hi = Math.max(...tmax)+2, X = i => i/(n-1||1)*1000, Y = v => 145 - (v-lo)/(hi-lo)*135;
+  const path = arr => arr.map((v,i) => `${i?'L':'M'}${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join('');
+  const refI = ds.findIndex(d => d.date === (B.reference_event||{}).date);
+  T.$('#chart').innerHTML = `${refI>=0?`<rect x="${X(refI)-6}" y="0" width="12" height="150" fill="none" stroke="var(--ink)" stroke-dasharray="3 3"/>`:''}
+    <path d="${path(tmax)}" fill="none" stroke="var(--ember2)" stroke-width="2.5" vector-effect="non-scaling-stroke"/>
+    <path d="${path(wb)}" fill="none" stroke="var(--b4)" stroke-width="2.5" vector-effect="non-scaling-stroke"/>
+    <rect id="cur" x="0" y="0" width="4" height="150" fill="var(--ember)" opacity=".8"/>`;
+}
+function summary(){
+  const s = B.summary;
+  T.$('#summary').innerHTML = `<h3>Across the whole replay</h3><div class="kpi-mini">
+    <div><b>${s.days_with_band3_plus}</b><span>days needing work–rest limits</span></div><div><b>${s.zone_days_band3_plus}</b><span>zone-days of worker alerts</span></div>
+    <div><b>${s.days_orange_or_red}</b><span>days at orange/red tier</span></div><div><b>${s.hot_night_zone_days}</b><span>zone-days escalated by hot nights</span></div>
+    <div><b>${s.actions_triggered}</b><span>department actions assigned</span></div><div><b>${s.first_worker_warning||'–'}</b><span>first worker warning</span></div></div>`;
+  T.$('#caveat').textContent = B.caveat;
+}
+function play(){
+  const btn = T.$('#play');
+  if(timer){ clearInterval(timer); timer = null; btn.textContent = '▶ Play'; return; }
+  if(idx >= B.days.length-1) idx = 0;
+  btn.textContent = '⏸ Pause';
+  timer = setInterval(() => { idx++; draw(); if(idx >= B.days.length-1){ clearInterval(timer); timer = null; btn.textContent = '↺ Replay'; } }, T.REDUCED ? 1200 : 700);
+}
+async function load(){
+  const c = T.cities[T.city()];
+  map.fitBounds(L.latLngBounds(c.zones.map(z => [z.lat, z.lon])).pad(0.25));
+  T.$('#hTitle').textContent = `${c.name} ${c.replay.start.slice(0,4)} heatwave`;
+  try{ B = await T.api('/api/backtest?city='+c.id); }catch(e){ T.$('#story').textContent = 'Replay data unavailable: '+e.message; return; }
+  T.$('#day').max = B.days.length-1; idx = Math.max(0, B.days.findIndex(d => d.date === c.replay.default));
+  chart(); summary(); draw();
+}
+(async function(){
+  await T.nav({onCity: () => { if(timer) play(); load(); }});
+  map = L.map('map', {scrollWheelZoom:false}); map.setView([28.6, 77.2], 10);
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {attribution:'© OpenStreetMap contributors', maxZoom:18, className:'tiles'}).addTo(map);
+  layer = L.layerGroup().addTo(map);
+  const bc = T.bandColors(); T.$('#legend').innerHTML = T.bands.map(b => `<span><i style="background:${bc[b.band]}"></i>${b.band} · ${T.esc(b.label)}</span>`).join('');
+  T.$('#play').onclick = play; T.$('#day').oninput = e => { idx = +e.target.value; draw(); };
+  addEventListener('keydown', e => { if(!B) return; if(e.key==='ArrowRight'){ idx = Math.min(B.days.length-1, idx+1); draw(); } if(e.key==='ArrowLeft'){ idx = Math.max(0, idx-1); draw(); } });
+  T.boot(); load();
+})();
+</script>
+</body>
+</html>
