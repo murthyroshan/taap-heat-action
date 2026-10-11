@@ -176,3 +176,58 @@ def test_failed_history_fetch_backs_off(monkeypatch):
         res = api.route("GET", "/api/backtest", {"city": "delhi"}, {}, st)
         assert res["statusCode"] == 503
     assert len(calls) == 1
+
+
+def test_webhook_requires_the_secret(monkeypatch):
+    from handlers import bot
+    called = []
+    monkeypatch.setattr(bot.Bot, "handle", lambda self, u: called.append(u))
+    monkeypatch.setattr(bot.store, "get_store", lambda: store.MemoryStore())
+    ev = {"headers": {}, "body": json.dumps(_msg(1, "/stop"))}
+    monkeypatch.delenv("TELEGRAM_SECRET", raising=False)
+    assert bot.handler(ev, None)["statusCode"] == 403  # unset secret = closed, not open
+    monkeypatch.setenv("TELEGRAM_SECRET", "s3cret-s3cret-s3cret")
+    assert bot.handler(ev, None)["statusCode"] == 403
+    ev["headers"] = {"X-Telegram-Bot-Api-Secret-Token": "s3cret-s3cret-s3cret"}
+    assert bot.handler(ev, None)["statusCode"] == 200 and called
+
+
+def test_old_city_button_resets_zone_and_reports_survive():
+    st, tg = store.MemoryStore(), FakeTelegram()
+    bot = Bot(st, tg)
+    store.save_user(st, 8, {"role": "worker", "city": "delhi", "zone": "narela", "lang": "en"})
+    bot.handle(_cb(8, "c|ahmedabad"))
+    u = store.get_user(st, 8)
+    assert u["role"] == "worker_pending" and "zone" not in u
+    store.save_user(st, 9, {"role": "worker", "city": "ahmedabad", "zone": "narela", "lang": "en"})
+    bot.handle(_msg(9, "🚱 No drinking water at site"))  # zone not in city: restart, no crash
+    assert "/start" in tg.sent[-1][2]
+
+
+def test_officer_ask_runs_async():
+    st, tg = store.MemoryStore(), FakeTelegram()
+    calls = []
+    _officer(st, 10)
+    Bot(st, tg, agent=lambda q, c, chat=None: calls.append((q, c, chat))).handle(_msg(10, "/ask open actions?"))
+    assert calls == [("open actions?", "delhi", 10)]
+
+
+def test_public_ask_is_rate_limited_and_replay_date_validated(monkeypatch):
+    monkeypatch.setenv("ADMIN_TOKEN", "t0k")
+    st = store.MemoryStore()
+    codes = [api.route("POST", "/api/ask", {}, {"question": "hi", "city": "delhi"}, st,
+                       agent=lambda q, c: "ok")["statusCode"] for _ in range(api.ASK_PER_MINUTE + 2)]
+    assert codes.count(200) == api.ASK_PER_MINUTE and codes[-1] == 429
+    for bad in ("2024-05-2", "yesterday", 12345, "2024-13-01"):
+        res = api.route("POST", "/api/replay", {}, {"city": "delhi", "date": bad, "token": "t0k"}, st)
+        assert res["statusCode"] == 400
+
+
+def test_cap_identifier_changes_every_run():
+    from heatplan import cap
+    st = store.MemoryStore()
+    snap = _live(st)
+    a = cap.build({**snap, "generated_at": "2026-10-11T07:05:00+00:00"}, "live")
+    b = cap.build({**snap, "generated_at": "2026-10-11T08:05:00+00:00"}, "live")
+    ident = lambda x: x.split("<identifier>")[1].split("<")[0]
+    assert ident(a) != ident(b)

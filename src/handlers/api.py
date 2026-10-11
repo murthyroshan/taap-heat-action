@@ -4,10 +4,12 @@ from __future__ import annotations
 import base64
 import json
 import os
+from datetime import date
 
 from heatplan import cap, engine, poster, replay, store, weather
 from heatplan.plan import BANDS, list_cities, load_city
 
+ASK_PER_MINUTE = 10
 WEB = os.path.join(os.path.dirname(os.path.dirname(__file__)), "web", "index.html")
 
 
@@ -78,8 +80,11 @@ def route(method: str, path: str, q: dict, payload: dict, st=None, agent=None):
         if not _admin_ok(payload):
             return _resp({"error": "admin token required"}, 403)
         city = _city(payload)
-        day = payload.get("date") or load_city(city)["replay"]["default"]
         win = load_city(city)["replay"]
+        try:
+            day = date.fromisoformat(str(payload.get("date") or win["default"])).isoformat()
+        except ValueError:
+            return _resp({"error": "date must be YYYY-MM-DD"}, 400)
         if not win["start"] <= day <= win["end"]:
             return _resp({"error": f"date must be within {win['start']}..{win['end']}"}, 400)
         try:
@@ -103,6 +108,11 @@ def route(method: str, path: str, q: dict, payload: dict, st=None, agent=None):
             return _resp({"error": "question required"}, 400)
         if not agent:
             return _resp({"error": "assistant not configured"}, 503)
+        minute = store.now_ts() // 60
+        used = (st.get("RATE", f"ask#{minute}") or {"n": 0})["n"]
+        if used >= ASK_PER_MINUTE:  # public endpoint backed by paid model calls
+            return _resp({"error": "the assistant is busy; try again in a minute"}, 429)
+        st.put("RATE", f"ask#{minute}", {"n": used + 1})
         return _resp({"answer": agent(question, _city(payload))})
 
     return _resp({"error": "not found"}, 404)

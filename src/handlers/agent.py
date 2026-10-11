@@ -107,7 +107,11 @@ def handler(event, context):
     if not question:
         return {"error": "question required"}
     try:
-        return {"answer": answer(question, city)}
+        out = {"answer": answer(question, city)}
     except Exception as e:
         print(f"agent error: {e!r}")
-        return {"error": "The assistant is unavailable right now (check Bedrock model access)."}
+        out = {"error": "The assistant is unavailable right now (check Bedrock model access)."}
+    if event.get("chat_id") is not None:  # asynchronous call from the Telegram bot
+        from heatplan.telegram import Telegram
+        Telegram().send(event["chat_id"], out.get("answer") or out["error"])
+    return out

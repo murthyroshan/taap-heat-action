@@ -44,7 +44,7 @@ def build(snap: dict, mode: str, sender: str = "taap-heat-plan") -> str:
     body = "\n".join(infos)
     return f"""<?xml version="1.0" encoding="UTF-8"?>
 <alert xmlns="urn:oasis:names:tc:emergency:cap:1.2">
-  <identifier>{escape(f"taap-{snap['city']}-{mode}-{snap['date']}")}</identifier>
+  <identifier>{escape(f"taap-{snap['city']}-{mode}-{snap['date']}-" + "".join(ch for ch in sent if ch.isdigit())[:14])}</identifier>
   <sender>{escape(sender)}</sender>
   <sent>{escape(sent)}</sent>
   <status>{status}</status>

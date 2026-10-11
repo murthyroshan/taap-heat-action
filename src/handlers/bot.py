@@ -7,6 +7,7 @@ Anyone:   /stop to unsubscribe. Officers: /ask <question> for the plan agent.
 from __future__ import annotations
 
 import base64
+import hmac
 import json
 import os
 from datetime import datetime, timezone
@@ -75,7 +76,10 @@ class Bot:
             elif not self.agent:
                 self.tg.send(chat, "Assistant is not configured.")
             else:
-                self.tg.send(chat, self.agent(q, user["city"]))
+                self.tg.send(chat, "🤔 …")
+                reply = self.agent(q, user["city"], chat)
+                if reply:
+                    self.tg.send(chat, reply)
             return
 
         if user.get("role") == "worker" and user.get("zone"):
@@ -114,7 +118,8 @@ class Bot:
                 return self._restart(chat)
             city = load_city(parts[1])
             lang = user.get("lang", "hi")
-            user.update(city=city["id"])
+            user.update(city=city["id"], role="worker_pending")  # no alerts until a zone in this city is picked
+            user.pop("zone", None)
             store.save_user(self.st, chat, user)
             prompt = "अपना इलाका चुनें:" if lang == "hi" else "Choose your area:"
             self.tg.send(chat, prompt, buttons=_grid(
@@ -201,6 +206,8 @@ class Bot:
 
     def report(self, chat, user, rtype):
         lang = user.get("lang", "hi")
+        if user.get("city") not in list_cities() or not zone_by_id(load_city(user["city"]), user.get("zone")):
+            return self._restart(chat)
         last = self.st.get("RATE", f"{chat}#{rtype}")
         if last and store.now_ts() - last["at"] < REPORT_COOLDOWN_S:
             self.tg.send(chat, "✅ यह रिपोर्ट पहले ही भेजी जा चुकी है।" if lang == "hi" else "✅ Already reported recently.")
@@ -221,12 +228,20 @@ class Bot:
         self.tg.send(chat, messages.ILL_REPLY[lang] if rtype == "ill" else messages.REPORT_THANKS[lang])
 
 
-def _invoke_agent(question: str, city: str) -> str:
+def _invoke_agent(question: str, city: str, chat_id=None) -> str | None:
+    """With a chat id the agent runs asynchronously and replies on Telegram itself, so a slow
+    model call can never time out the webhook (which would make Telegram redeliver the update)."""
     fn = os.environ.get("AGENT_FUNCTION")
     if not fn:
         return "Assistant is not configured."
     import boto3
-    res = boto3.client("lambda").invoke(FunctionName=fn, Payload=json.dumps({"question": question, "city": city}))
+    from botocore.config import Config
+    client = boto3.client("lambda", config=Config(read_timeout=100, retries={"max_attempts": 1}))
+    payload = json.dumps({"question": question, "city": city, "chat_id": chat_id})
+    if chat_id is not None:
+        client.invoke(FunctionName=fn, InvocationType="Event", Payload=payload)
+        return None
+    res = client.invoke(FunctionName=fn, Payload=payload)
     out = json.loads(res["Payload"].read() or b"{}")
     return out.get("answer") or out.get("error") or "No answer."
 
@@ -234,8 +249,8 @@ def _invoke_agent(question: str, city: str) -> str:
 def handler(event, context):
     secret = os.environ.get("TELEGRAM_SECRET")
     headers = {k.lower(): v for k, v in (event.get("headers") or {}).items()}
-    if secret and headers.get("x-telegram-bot-api-secret-token") != secret:
-        return {"statusCode": 403, "body": "forbidden"}
+    if not secret or not hmac.compare_digest(headers.get("x-telegram-bot-api-secret-token", ""), secret):
+        return {"statusCode": 403, "body": "forbidden"}  # only Telegram knows the secret
     body = event.get("body") or "{}"
     if event.get("isBase64Encoded"):
         body = base64.b64decode(body).decode()

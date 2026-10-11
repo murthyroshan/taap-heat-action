@@ -11,8 +11,9 @@ Parameters:
   TelegramSecret:
     Type: String
     NoEcho: true
-    Default: ""
-    Description: Random string; Telegram sends it back on every webhook call.
+    MinLength: 16
+    AllowedPattern: "[A-Za-z0-9_-]+"
+    Description: Random string (16+ chars of A-Z a-z 0-9 _ -); Telegram sends it back on every webhook call.
   AdminToken:
     Type: String
     NoEcho: true
@@ -91,7 +92,7 @@ Resources:
     Properties:
       Description: Telegram webhook - workers and officers
       Handler: handlers.bot.handler
-      Timeout: 60
+      Timeout: 30
       Environment:
         Variables:
           TELEGRAM_SECRET: !Ref TelegramSecret
@@ -137,7 +138,7 @@ Resources:
         Variables:
           MODEL_ID: !Ref ModelId
       Policies:
-        - DynamoDBReadPolicy: {TableName: !Ref Table}
+        - DynamoDBCrudPolicy: {TableName: !Ref Table}  # backtest tool may fill the cache
         - Statement:
             - Effect: Allow
               Action: [bedrock:InvokeModel, bedrock:InvokeModelWithResponseStream]

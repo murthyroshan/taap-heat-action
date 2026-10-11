@@ -86,7 +86,7 @@ Prerequisites: an AWS account (Paid plan recommended; credits still apply), AWS 
    ```bash
    scripts/deploy.sh
    ```
-   The first run is guided. Set `AdminToken`, `OfficerCode`, `TelegramToken` and a random `TelegramSecret`.
+   The first run is guided. Set `AdminToken`, `OfficerCode`, `TelegramToken` and a random `TelegramSecret` (16+ letters, digits, `_` or `-`). The webhook rejects every request without it.
 4. **Connect Telegram:**
    ```bash
    TELEGRAM_TOKEN=... TELEGRAM_SECRET=... scripts/set_webhook.sh taap
