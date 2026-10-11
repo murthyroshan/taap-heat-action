@@ -4,121 +4,413 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Taap — Heat Action Plan, running</title>
+<meta name="description" content="Taap runs a city's Heat Action Plan: humidity-aware heat stress per zone, Hindi alerts for outdoor workers, and a public log of what officers actually did.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E🔥%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@500;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <style>
-:root{--bg:#f6f5f2;--card:#fff;--ink:#17181a;--muted:#5d6168;--line:#e3e1dc;--accent:#c2410c;
- --b0:#2e7d32;--b1:#d4a106;--b2:#ef6c00;--b3:#c62828;--b4:#6a1b9a;
- --t-green:#2e7d32;--t-yellow:#d4a106;--t-orange:#ef6c00;--t-red:#c62828}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121315;--card:#1c1d20;--ink:#ecebe8;--muted:#a3a6ad;--line:#2d2f33}}
-:root[data-theme="dark"]{--bg:#121315;--card:#1c1d20;--ink:#ecebe8;--muted:#a3a6ad;--line:#2d2f33}
+:root{
+  --bg:#0b0b0d; --bg2:#121216; --card:rgba(26,26,31,.72); --card-solid:#1a1a1f; --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.14);
+  --ink:#f4f1ec; --muted:#a39e97; --faint:#6f6a64;
+  --ember:#ff6a1a; --ember2:#ffb020; --ember3:#ff2d55; --glow:rgba(255,106,26,.35);
+  --b0:#34c759; --b1:#ffcc00; --b2:#ff9500; --b3:#ff3b30; --b4:#bf5af2;
+  --t-green:#34c759; --t-yellow:#ffcc00; --t-orange:#ff9500; --t-red:#ff3b30;
+  --radius:18px; --shadow:0 20px 60px -20px rgba(0,0,0,.6);
+  --ease:cubic-bezier(.2,.8,.2,1);
+  color-scheme:dark;
+}
+:root[data-theme="light"]{
+  --bg:#f7f4ef; --bg2:#efe9e0; --card:rgba(255,255,255,.78); --card-solid:#fff; --line:rgba(0,0,0,.08); --line2:rgba(0,0,0,.14);
+  --ink:#1b1a18; --muted:#5f5a53; --faint:#8b857d; --glow:rgba(255,106,26,.22); --shadow:0 20px 50px -24px rgba(60,30,0,.35);
+  color-scheme:light;
+}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans Devanagari",sans-serif}
-header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--line);background:var(--card)}
-.brand{display:flex;align-items:baseline;gap:10px}.brand b{font-size:22px;color:var(--accent)}.brand span{color:var(--muted)}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 Inter,system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans Devanagari",sans-serif;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+.hi{font-family:"Noto Sans Devanagari",Inter,sans-serif}
+a{color:var(--ember2)}
+button,select,input{font:inherit;color:var(--ink)}
+::selection{background:var(--ember);color:#fff}
+
+/* ---------- background ---------- */
+.bgfx{position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background:
+   radial-gradient(900px 600px at 85% -10%, rgba(255,106,26,.16), transparent 60%),
+   radial-gradient(700px 500px at -10% 30%, rgba(255,45,85,.10), transparent 60%),
+   radial-gradient(800px 700px at 50% 120%, rgba(255,176,32,.08), transparent 60%), var(--bg)}
+.bgfx::after{content:"";position:absolute;inset:0;opacity:.05;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='.9'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E")}
+
+/* ---------- nav ---------- */
+nav{position:sticky;top:0;z-index:1000;display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:12px 20px;
+  background:color-mix(in srgb,var(--bg) 70%,transparent);backdrop-filter:blur(16px) saturate(1.4);-webkit-backdrop-filter:blur(16px) saturate(1.4);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:20px;letter-spacing:-.02em;text-decoration:none;color:var(--ink)}
+.logo{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;background:conic-gradient(from 200deg,var(--ember3),var(--ember),var(--ember2),var(--ember3));box-shadow:0 0 24px var(--glow);animation:spin 8s linear infinite}
+.logo span{width:20px;height:20px;border-radius:6px;background:var(--bg);display:grid;place-items:center;font-size:12px}
+@keyframes spin{to{filter:hue-rotate(25deg)}}
 .controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-select,input,button{font:inherit;padding:7px 10px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink)}
-button{cursor:pointer}button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
-.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}.seg button{border:0;border-radius:0}.seg button.on{background:var(--ink);color:var(--bg)}
-main{max-width:1280px;margin:0 auto;padding:16px;display:grid;gap:16px;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr)}
-@media (max-width:900px){main{grid-template-columns:1fr}}
-.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
-.card h2{font-size:14px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 0 10px}
-.kpis{grid-column:1/-1;display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
-.kpi .v{font-size:26px;font-weight:700}.kpi .l{color:var(--muted);font-size:13px}
-.pill{display:inline-block;padding:2px 9px;border-radius:99px;color:#fff;font-size:12px;font-weight:700;text-transform:uppercase}
-#map{height:430px;border-radius:10px}
-.tiles{filter:saturate(.35) contrast(.95)}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .tiles{filter:invert(1) hue-rotate(180deg) saturate(.3) brightness(.9)}}
-.zl{background:transparent;border:0;box-shadow:none;font-weight:700;font-size:11px;color:var(--ink);text-shadow:0 0 3px var(--card),0 0 3px var(--card)}
-.zl::before{display:none}
-.hours{display:grid;grid-template-columns:repeat(24,1fr);gap:2px;margin:8px 0}.hours div{height:34px;border-radius:3px;position:relative}
-.hours div span{position:absolute;bottom:-17px;left:0;font-size:10px;color:var(--muted)}
-table{width:100%;border-collapse:collapse;font-size:13.5px}th,td{text-align:left;padding:7px 6px;border-bottom:1px solid var(--line);vertical-align:top}th{color:var(--muted);font-weight:600}
-.done{color:var(--b0);font-weight:700}.open{color:var(--b3);font-weight:700}.muted{color:var(--muted)}.small{font-size:12.5px}
-.scroll{max-height:360px;overflow:auto}
-.bt{display:flex;gap:2px;align-items:flex-end;height:90px;margin:8px 0}.bt div{flex:1;border-radius:2px 2px 0 0}
-.nums{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}.nums b{font-size:22px;display:block}
-#answer{white-space:pre-wrap;margin-top:8px}
-.note{font-size:12.5px;color:var(--muted)}
-a{color:var(--accent)}
-.legend{display:flex;flex-wrap:wrap;gap:10px;font-size:12px;color:var(--muted);margin-top:8px}.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px}
+.ctl{padding:8px 12px;border-radius:12px;border:1px solid var(--line2);background:var(--card);cursor:pointer;transition:border-color .2s,transform .2s var(--ease),box-shadow .2s}
+.ctl:hover{border-color:var(--ember);transform:translateY(-1px)}
+select.ctl{padding-right:28px}
+.seg{position:relative;display:inline-flex;padding:4px;border-radius:12px;border:1px solid var(--line2);background:var(--card)}
+.seg button{position:relative;z-index:1;border:0;background:none;padding:6px 14px;border-radius:9px;cursor:pointer;color:var(--muted);font-weight:600;transition:color .25s}
+.seg button.on{color:#fff}
+.seg .pill-bg{position:absolute;top:4px;bottom:4px;border-radius:9px;background:linear-gradient(135deg,var(--ember),var(--ember3));box-shadow:0 6px 20px -6px var(--glow);transition:left .35s var(--ease),width .35s var(--ease)}
+.primary{border:0;padding:9px 16px;border-radius:12px;font-weight:700;color:#fff;cursor:pointer;background:linear-gradient(135deg,var(--ember),var(--ember3));box-shadow:0 10px 30px -10px var(--glow);transition:transform .2s var(--ease),box-shadow .2s,filter .2s}
+.primary:hover{transform:translateY(-2px);box-shadow:0 16px 36px -12px var(--glow);filter:saturate(1.15)}
+.primary:disabled{opacity:.6;cursor:wait;transform:none}
+#replayBox[hidden]{display:none!important}
+#replayBox{display:inline-flex;gap:8px;align-items:center;animation:pop .35s var(--ease)}
+
+/* ---------- hero ---------- */
+.hero{position:relative;min-height:min(92vh,820px);display:grid;grid-template-columns:1.1fr .9fr;align-items:center;gap:24px;padding:40px clamp(16px,5vw,72px) 60px;overflow:hidden}
+@media (max-width:900px){.hero{grid-template-columns:1fr;min-height:auto;padding-top:28px}}
+#embers{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.eyebrow{display:inline-flex;align-items:center;gap:8px;padding:6px 12px;border-radius:99px;border:1px solid var(--line2);background:var(--card);font-size:12.5px;color:var(--muted);font-weight:600}
+.live-dot{width:8px;height:8px;border-radius:50%;background:var(--b0);box-shadow:0 0 0 0 rgba(52,199,89,.6);animation:ping 1.8s infinite}
+@keyframes ping{70%{box-shadow:0 0 0 10px rgba(52,199,89,0)}100%{box-shadow:0 0 0 0 rgba(52,199,89,0)}}
+h1{font-size:clamp(38px,6.2vw,82px);line-height:.98;letter-spacing:-.045em;margin:18px 0 18px;font-weight:800}
+.heat-text{background:linear-gradient(100deg,var(--ember2),var(--ember) 35%,var(--ember3) 60%,var(--ember2) 90%);background-size:250% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:shimmer 6s ease-in-out infinite}
+@keyframes shimmer{50%{background-position:100% 0}}
+.lede{font-size:clamp(16px,1.6vw,19px);color:var(--muted);max-width:640px;margin:0 0 26px}
+.status{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:26px}
+.chip{display:inline-flex;align-items:center;gap:8px;padding:9px 14px;border-radius:14px;background:var(--card);border:1px solid var(--line2);font-weight:600;font-size:14px;backdrop-filter:blur(8px)}
+.chip i{width:10px;height:10px;border-radius:50%;display:inline-block;box-shadow:0 0 12px currentColor}
+.cta{display:flex;gap:12px;flex-wrap:wrap}
+.ghost{padding:9px 16px;border-radius:12px;border:1px solid var(--line2);background:transparent;cursor:pointer;font-weight:600;text-decoration:none;color:var(--ink);transition:border-color .2s,background .2s}
+.ghost:hover{border-color:var(--ember);background:var(--card)}
+
+/* 3D heat orb */
+.orb-wrap{position:relative;height:min(460px,70vw);perspective:1000px;display:grid;place-items:center}
+.orb{position:relative;width:min(340px,62vw);aspect-ratio:1;transform-style:preserve-3d;animation:float 7s ease-in-out infinite;transition:transform .3s var(--ease)}
+@keyframes float{50%{translate:0 -14px}}
+.core{position:absolute;inset:18%;border-radius:50%;
+  background:radial-gradient(circle at 35% 30%,#fff3c4 0,var(--ember2) 18%,var(--ember) 45%,var(--ember3) 75%,#5a0a1a 100%);
+  box-shadow:inset -20px -30px 60px rgba(90,10,26,.7),inset 18px 18px 40px rgba(255,240,200,.35)}
+.glow{position:absolute;width:min(420px,76vw);aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,rgba(255,140,40,.55) 0,rgba(255,80,40,.25) 35%,transparent 68%);filter:blur(10px);animation:breathe 4s ease-in-out infinite}
+@keyframes breathe{50%{transform:scale(1.12);opacity:.8}}
+.ring{position:absolute;inset:0;border-radius:50%;border:1.5px solid rgba(255,176,32,.45);transform-style:preserve-3d}
+.ring.r1{animation:r1 14s linear infinite}.ring.r2{inset:6%;border-color:rgba(255,106,26,.4);animation:r2 18s linear infinite}.ring.r3{inset:-8%;border-style:dashed;border-color:rgba(255,45,85,.35);animation:r3 26s linear infinite}
+@keyframes r1{from{transform:rotateX(70deg) rotateZ(0)}to{transform:rotateX(70deg) rotateZ(360deg)}}
+@keyframes r2{from{transform:rotateY(65deg) rotateZ(0)}to{transform:rotateY(65deg) rotateZ(-360deg)}}
+@keyframes r3{from{transform:rotateX(55deg) rotateY(25deg) rotateZ(0)}to{transform:rotateX(55deg) rotateY(25deg) rotateZ(360deg)}}
+.ring b{position:absolute;top:-6px;left:50%;width:12px;height:12px;border-radius:50%;background:var(--ember2);box-shadow:0 0 16px var(--ember2)}
+.orb-label{position:absolute;bottom:2%;left:50%;translate:-50% 0;text-align:center;font-size:13px;color:var(--muted)}
+.orb-label b{display:block;font-size:44px;line-height:1;color:var(--ink);letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.scroll-cue{position:absolute;left:50%;bottom:16px;translate:-50% 0;font-size:12px;color:var(--faint);display:flex;flex-direction:column;align-items:center;gap:6px}
+.scroll-cue span{width:22px;height:34px;border:2px solid var(--line2);border-radius:12px;position:relative}
+.scroll-cue span::after{content:"";position:absolute;left:50%;top:6px;width:4px;height:8px;border-radius:2px;background:var(--ember);translate:-50% 0;animation:wheel 1.6s infinite}
+@keyframes wheel{to{transform:translateY(12px);opacity:0}}
+
+/* ---------- layout ---------- */
+main{max-width:1320px;margin:0 auto;padding:0 clamp(16px,3vw,32px) 60px;display:grid;gap:20px;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr)}
+@media (max-width:960px){main{grid-template-columns:1fr}}
 .full{grid-column:1/-1}
+.section-title{grid-column:1/-1;margin:36px 0 2px;display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+.section-title h2{margin:0;font-size:clamp(24px,3vw,34px);letter-spacing:-.03em}
+.section-title p{margin:0;color:var(--muted)}
+.card{position:relative;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);backdrop-filter:blur(14px) saturate(1.2);-webkit-backdrop-filter:blur(14px) saturate(1.2);overflow:hidden}
+.card::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;background:linear-gradient(140deg,rgba(255,176,32,.35),transparent 30%,transparent 70%,rgba(255,45,85,.25));-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;opacity:.7}
+.card h3{font-size:12.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin:0 0 12px;font-weight:700}
+
+/* 3D tilt */
+.tilt{transform:perspective(900px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg)) translateZ(0);transition:transform .25s var(--ease),box-shadow .25s;will-change:transform}
+.tilt:hover{box-shadow:0 30px 70px -25px rgba(0,0,0,.7),0 0 0 1px var(--line2)}
+.tilt .shine{position:absolute;inset:0;pointer-events:none;border-radius:inherit;background:radial-gradient(500px circle at var(--mx,50%) var(--my,50%),rgba(255,176,32,.12),transparent 40%);opacity:0;transition:opacity .3s}
+.tilt:hover .shine{opacity:1}
+
+/* scroll reveal */
+.reveal{opacity:0;transform:translateY(28px) scale(.98);transition:opacity .8s var(--ease),transform .8s var(--ease);transition-delay:var(--d,0s)}
+.reveal.in{opacity:1;transform:none}
+.reveal.in.tilt{transform:perspective(900px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg)) translateZ(0);transition:transform .25s var(--ease),box-shadow .25s,opacity .8s var(--ease)}
+
+/* KPIs */
+.kpis{grid-column:1/-1;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-top:-30px}
+.kpi .l{color:var(--muted);font-size:13px;font-weight:600}
+.kpi .v{font-size:30px;font-weight:800;letter-spacing:-.03em;margin-top:8px;font-variant-numeric:tabular-nums;min-height:40px;display:flex;align-items:center}
+.kpi .bar{height:4px;border-radius:4px;background:var(--line);margin-top:12px;overflow:hidden}
+.kpi .bar i{display:block;height:100%;width:0;border-radius:4px;background:linear-gradient(90deg,var(--b0),var(--ember2));transition:width 1.2s var(--ease)}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:4px 11px;border-radius:99px;color:#111;font-size:12.5px;font-weight:800;text-transform:uppercase;letter-spacing:.03em}
+.pill.dark{color:#fff}
+
+/* map */
+#map{height:470px;border-radius:14px;background:var(--bg2);z-index:0}
+.tiles{filter:grayscale(.35) brightness(.55) contrast(1.15) sepia(.25) hue-rotate(-12deg)}
+:root[data-theme="light"] .tiles{filter:grayscale(.3) sepia(.15)}
+.zm{position:relative;width:26px;height:26px}
+.zm .dot{position:absolute;inset:4px;border-radius:50%;background:var(--c);border:3px solid var(--tier);box-shadow:0 0 18px var(--c);transition:transform .2s var(--ease)}
+.zm .pulse{position:absolute;inset:0;border-radius:50%;border:2px solid var(--c);animation:zp 2.2s var(--ease) infinite;animation-duration:var(--sp,2.2s)}
+.zm .pulse.p2{animation-delay:calc(var(--sp,2.2s)/2)}
+.zm:hover .dot,.zm.sel .dot{transform:scale(1.35)}
+@keyframes zp{from{transform:scale(.6);opacity:.9}to{transform:scale(2.6);opacity:0}}
+.zl{background:transparent;border:0;box-shadow:none;font-weight:700;font-size:11px;color:var(--ink);text-shadow:0 1px 3px var(--bg),0 0 6px var(--bg)}
+.zl::before{display:none}
+.leaflet-tooltip.tip{background:var(--card-solid);color:var(--ink);border:1px solid var(--line2);border-radius:10px;box-shadow:var(--shadow)}
+.leaflet-tooltip.tip::before{display:none}
+.leaflet-control-attribution{background:color-mix(in srgb,var(--bg) 70%,transparent)!important;color:var(--faint)!important}
+.leaflet-control-attribution a{color:var(--muted)!important}
+.leaflet-bar a{background:var(--card-solid)!important;color:var(--ink)!important;border-color:var(--line2)!important}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--muted);margin-top:12px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+
+/* zone detail */
+.zone-head{display:flex;gap:16px;align-items:center}
+.gauge{position:relative;width:118px;height:118px;flex:none}
+.gauge svg{transform:rotate(-90deg)}
+.gauge .track{stroke:var(--line2)}
+.gauge .val{transition:stroke-dashoffset 1.4s var(--ease),stroke .4s}
+.gauge .num{position:absolute;inset:0;display:grid;place-items:center;text-align:center}
+.gauge .num b{font-size:26px;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.gauge .num small{display:block;font-size:10.5px;color:var(--muted);font-weight:600;letter-spacing:.06em}
+.zone-name{font-size:24px;font-weight:800;letter-spacing:-.02em;margin:0}
+.rule{margin:14px 0;padding:12px 14px;border-radius:12px;background:linear-gradient(135deg,color-mix(in srgb,var(--c,var(--ember)) 18%,transparent),transparent);border:1px solid color-mix(in srgb,var(--c,var(--ember)) 40%,transparent);font-weight:700}
+.hours{display:grid;grid-template-columns:repeat(24,1fr);gap:3px;align-items:end;height:110px;margin:10px 0 4px;padding-top:6px}
+.hours div{border-radius:4px 4px 2px 2px;transform-origin:bottom;transform:scaleY(0);transition:transform .7s var(--ease);transition-delay:calc(var(--i)*22ms);position:relative;cursor:default}
+.hours.go div{transform:scaleY(1)}
+.hours div:hover{filter:brightness(1.3)}
+.hours div.now{outline:2px solid var(--ink);outline-offset:1px}
+.axis{display:grid;grid-template-columns:repeat(24,1fr);font-size:10px;color:var(--faint);font-family:"JetBrains Mono",monospace}
+.meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.meta span{padding:5px 10px;border-radius:10px;background:var(--bg2);border:1px solid var(--line);font-size:12.5px;color:var(--muted)}
+.meta b{color:var(--ink)}
+
+/* action log */
+.progress{display:flex;align-items:center;gap:14px;margin-bottom:14px}
+.progress .track{flex:1;height:10px;border-radius:10px;background:var(--line);overflow:hidden}
+.progress .track i{display:block;height:100%;width:0;border-radius:10px;background:linear-gradient(90deg,var(--b0),#7be495);box-shadow:0 0 16px rgba(52,199,89,.5);transition:width 1.2s var(--ease)}
+.progress b{font-variant-numeric:tabular-nums;font-size:14px}
+.acts{display:grid;gap:10px;max-height:460px;overflow:auto;padding-right:4px}
+.act{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:start;padding:12px 14px;border-radius:14px;background:var(--bg2);border:1px solid var(--line);animation:slideIn .5s var(--ease) both;animation-delay:calc(var(--i)*40ms)}
+@keyframes slideIn{from{opacity:0;transform:translateX(-14px)}}
+.act .ic{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font-size:16px;background:color-mix(in srgb,var(--c) 18%,transparent);border:1px solid color-mix(in srgb,var(--c) 45%,transparent)}
+.act .t{font-weight:600}
+.act .s{font-size:12.5px;color:var(--muted);margin-top:3px}
+.status-chip{font-size:12px;font-weight:800;padding:4px 10px;border-radius:99px;white-space:nowrap}
+.status-chip.done{background:rgba(52,199,89,.15);color:var(--b0);border:1px solid rgba(52,199,89,.4)}
+.status-chip.open{background:rgba(255,59,48,.12);color:#ff6961;border:1px solid rgba(255,59,48,.4);animation:blink 2.4s ease-in-out infinite}
+@keyframes blink{50%{opacity:.55}}
+.empty{color:var(--muted);padding:16px;border:1px dashed var(--line2);border-radius:14px;text-align:center}
+
+/* reports + ask */
+.rep{display:flex;gap:10px;align-items:center;padding:10px 12px;border-radius:12px;background:var(--bg2);border:1px solid var(--line);margin-bottom:8px;animation:slideIn .5s var(--ease) both}
+.rep .time{font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--faint)}
+.rep .grow{flex:1}
+.chat{display:flex;flex-direction:column;gap:10px;max-height:300px;overflow:auto;margin-bottom:12px}
+.bubble{max-width:88%;padding:10px 14px;border-radius:16px;white-space:pre-wrap;animation:pop .35s var(--ease) both;font-size:14px}
+.bubble.me{align-self:flex-end;background:linear-gradient(135deg,var(--ember),var(--ember3));color:#fff;border-bottom-right-radius:4px}
+.bubble.ai{align-self:flex-start;background:var(--bg2);border:1px solid var(--line2);border-bottom-left-radius:4px}
+@keyframes pop{from{opacity:0;transform:scale(.92) translateY(6px)}}
+.typing{display:inline-flex;gap:4px}.typing i{width:6px;height:6px;border-radius:50%;background:var(--muted);animation:typing 1s infinite}.typing i:nth-child(2){animation-delay:.15s}.typing i:nth-child(3){animation-delay:.3s}
+@keyframes typing{50%{transform:translateY(-4px);opacity:.4}}
+.askrow{display:flex;gap:8px}.askrow input{flex:1;padding:11px 14px;border-radius:12px;border:1px solid var(--line2);background:var(--bg2)}
+.askrow input:focus,.ctl:focus-visible,button:focus-visible{outline:2px solid var(--ember);outline-offset:2px}
+.suggest{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.suggest button{border:1px solid var(--line2);background:transparent;border-radius:99px;padding:5px 11px;font-size:12.5px;color:var(--muted);cursor:pointer;transition:all .2s}
+.suggest button:hover{color:var(--ink);border-color:var(--ember)}
+
+/* how it works */
+.steps{grid-column:1/-1;display:grid;grid-template-columns:repeat(4,1fr);gap:16px;counter-reset:s}
+@media (max-width:900px){.steps{grid-template-columns:1fr 1fr}}
+@media (max-width:520px){.steps{grid-template-columns:1fr}}
+.step{counter-increment:s}
+.step::after{content:"0" counter(s);position:absolute;right:14px;top:6px;font-size:54px;font-weight:800;color:var(--line2);letter-spacing:-.04em}
+.step .em{font-size:28px}
+.step h4{margin:10px 0 6px;font-size:17px}
+.step p{margin:0;color:var(--muted);font-size:14px}
+
+/* backtest */
+.nums{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:12px 0 6px}
+.nums div{padding:14px;border-radius:14px;background:var(--bg2);border:1px solid var(--line)}
+.nums b{font-size:28px;display:block;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.nums span{font-size:12.5px;color:var(--muted)}
+.bt{display:flex;gap:3px;align-items:flex-end;height:140px;margin:16px 0 8px}
+.bt div{flex:1;border-radius:4px 4px 1px 1px;transform-origin:bottom;transform:scaleY(0);transition:transform .9s var(--ease);transition-delay:calc(var(--i)*18ms)}
+.bt.go div{transform:scaleY(1)}
+.bt div.ref{box-shadow:0 0 0 2px var(--ink),0 0 20px var(--ember)}
+
+/* misc */
+.note{font-size:12.5px;color:var(--muted)}
+.drop{display:block;border:1.5px dashed var(--line2);border-radius:14px;padding:18px;text-align:center;transition:border-color .2s,background .2s;cursor:pointer}
+.drop.over{border-color:var(--ember);background:color-mix(in srgb,var(--ember) 8%,transparent)}
+pre{max-height:320px;overflow:auto;background:var(--bg2);padding:12px;border-radius:12px;border:1px solid var(--line);font:12.5px/1.5 "JetBrains Mono",monospace}
+.skel{height:14px;border-radius:7px;background:linear-gradient(90deg,var(--line) 0,var(--line2) 40%,var(--line) 80%);background-size:200% 100%;animation:sk 1.3s infinite;margin:8px 0}
+@keyframes sk{to{background-position:-200% 0}}
+.toasts{position:fixed;right:16px;bottom:16px;z-index:2000;display:flex;flex-direction:column;gap:8px;max-width:min(380px,calc(100vw - 32px))}
+.toast{padding:12px 16px;border-radius:14px;background:var(--card-solid);border:1px solid var(--line2);box-shadow:var(--shadow);animation:pop .3s var(--ease) both;font-size:14px}
+.toast.bad{border-color:rgba(255,59,48,.6)}.toast.good{border-color:rgba(52,199,89,.6)}
+footer{max-width:1320px;margin:0 auto;padding:0 clamp(16px,3vw,32px) 40px}
+.progress-top{position:fixed;top:0;left:0;height:2px;z-index:1001;background:linear-gradient(90deg,var(--ember2),var(--ember3));width:0}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}.reveal{opacity:1;transform:none}.hours div,.bt div{transform:none}}
 </style>
 </head>
 <body>
-<header>
-  <div class="brand"><b>🔥 Taap</b><span>Heat Action Plan, running — and accountable</span></div>
+<div class="bgfx"></div>
+<div class="progress-top" id="readbar"></div>
+
+<nav>
+  <a class="brand" href="#top"><div class="logo"><span>🔥</span></div>Taap</a>
   <div class="controls">
-    <select id="city" aria-label="City"></select>
-    <div class="seg" role="tablist"><button id="mLive" class="on">Live</button><button id="mReplay">Replay</button></div>
-    <span id="replayBox" hidden><input type="date" id="rdate" aria-label="Replay date"> <button class="primary" id="runReplay">▶ Run replay</button></span>
-    <button id="settings" title="Admin token">⚙︎</button>
+    <select id="city" class="ctl" aria-label="City"></select>
+    <div class="seg" role="tablist" id="seg"><span class="pill-bg"></span><button id="mLive" class="on">Live</button><button id="mReplay">Replay</button></div>
+    <span id="replayBox" hidden><input type="date" id="rdate" class="ctl" aria-label="Replay date"><button class="primary" id="runReplay">▶ Run replay</button></span>
+    <button id="theme" class="ctl" title="Toggle theme" aria-label="Toggle theme">☀︎</button>
+    <button id="settings" class="ctl" title="Admin token" aria-label="Admin token">⚙︎</button>
   </div>
+</nav>
+
+<header class="hero" id="top">
+  <canvas id="embers"></canvas>
+  <div>
+    <span class="eyebrow reveal"><span class="live-dot"></span><span id="heroMode">Live · updated hourly</span></span>
+    <h1 class="reveal" style="--d:.08s"><span id="heroCity">Delhi</span>'s Heat Action Plan,<br><span class="heat-text">running.</span></h1>
+    <p class="lede reveal" style="--d:.16s">Humidity-aware heat stress for every zone. Work–rest instructions to outdoor workers in Hindi. Every plan action sent to a named officer — and a public record of what actually happened.</p>
+    <div class="status reveal" style="--d:.24s" id="heroStatus"><span class="chip"><span class="skel" style="width:160px;margin:0"></span></span></div>
+    <div class="cta reveal" style="--d:.32s"><a class="primary" href="#ops" style="text-decoration:none">See today's plan ↓</a><a class="ghost" href="#how">How it works</a></div>
+  </div>
+  <div class="orb-wrap reveal" style="--d:.2s">
+    <div class="glow"></div>
+    <div class="orb" id="orb">
+      <div class="ring r3"><b></b></div><div class="ring r1"><b></b></div><div class="ring r2"><b></b></div>
+      <div class="core"></div>
+    </div>
+    <div class="orb-label">peak WBGT today<b id="orbVal">–</b></div>
+  </div>
+  <div class="scroll-cue"><span></span>scroll</div>
 </header>
+
 <main>
   <section class="kpis">
-    <div class="card kpi"><div class="l">Official plan tier (from Tmax)</div><div class="v" id="kTier">–</div></div>
-    <div class="card kpi"><div class="l">Worst worker band (from WBGT)</div><div class="v" id="kBand">–</div></div>
-    <div class="card kpi"><div class="l">Plan actions done</div><div class="v" id="kActs">–</div></div>
-    <div class="card kpi"><div class="l">Open worker reports</div><div class="v" id="kReps">–</div></div>
+    <div class="card kpi tilt reveal"><div class="shine"></div><div class="l">Official plan tier · from Tmax</div><div class="v" id="kTier">–</div><div class="bar"><i id="kTierBar"></i></div></div>
+    <div class="card kpi tilt reveal" style="--d:.06s"><div class="shine"></div><div class="l">Worst worker band · from WBGT</div><div class="v" id="kBand">–</div><div class="bar"><i id="kBandBar"></i></div></div>
+    <div class="card kpi tilt reveal" style="--d:.12s"><div class="shine"></div><div class="l">Plan actions done</div><div class="v" id="kActs">–</div><div class="bar"><i id="kActsBar"></i></div></div>
+    <div class="card kpi tilt reveal" style="--d:.18s"><div class="shine"></div><div class="l">Open worker reports</div><div class="v" id="kReps">–</div><div class="bar"><i id="kRepsBar"></i></div></div>
   </section>
 
-  <section class="card">
-    <h2 id="mapTitle">Zones</h2>
+  <div class="section-title reveal" id="ops"><h2>Today, zone by zone</h2><p id="mapTitle">Loading…</p></div>
+  <section class="card reveal">
     <div id="map"></div>
     <div class="legend" id="legend"></div>
   </section>
-
-  <section class="card">
-    <h2>Zone detail</h2>
-    <div id="zone"><p class="muted">Select a zone on the map.</p></div>
+  <section class="card tilt reveal" style="--d:.08s"><div class="shine"></div>
+    <h3>Zone detail</h3>
+    <div id="zone"><div class="skel"></div><div class="skel" style="width:70%"></div><div class="skel" style="width:50%"></div></div>
   </section>
 
-  <section class="card full">
-    <h2>Plan vs reality — action log</h2>
-    <div class="scroll"><table><thead><tr><th>Zone</th><th>Action</th><th>Owner</th><th>Status</th><th>Plan reference</th></tr></thead><tbody id="acts"></tbody></table></div>
+  <div class="section-title reveal"><h2>Plan vs reality</h2><p>Every action the plan triggered, who owns it, and whether it happened.</p></div>
+  <section class="card full reveal">
+    <div class="progress"><div class="track"><i id="actBar"></i></div><b id="actPct">0%</b></div>
+    <div class="acts" id="acts"></div>
   </section>
 
-  <section class="card">
-    <h2>Worker reports (today)</h2>
-    <div class="scroll"><table><thead><tr><th>Time</th><th>Zone</th><th>Report</th><th>Status</th></tr></thead><tbody id="reps"></tbody></table></div>
+  <section class="card reveal">
+    <h3>Worker reports · today</h3>
+    <div id="reps"></div>
+  </section>
+  <section class="card reveal" style="--d:.08s">
+    <h3>Ask the plan assistant</h3>
+    <div class="chat" id="answer"><div class="bubble ai">Ask about today's risk, open actions or the plan itself. I answer only from live data.</div></div>
+    <form id="askForm" class="askrow"><input id="q" maxlength="500" placeholder="Which zones still have open actions?" autocomplete="off"><button class="primary">Ask</button></form>
+    <div class="suggest" id="suggest"></div>
+    <p class="note" style="margin:10px 0 0">Strands Agents · read-only tools over the plan, live risk, actions and reports</p>
   </section>
 
-  <section class="card">
-    <h2>Ask the plan assistant</h2>
-    <form id="askForm"><input id="q" style="width:100%" maxlength="500" placeholder="Which zones still have open actions, and who owns them?"><div style="margin-top:8px"><button class="primary">Ask</button> <span class="small muted">Strands agent on Amazon Bedrock · read-only tools</span></div></form>
-    <div id="answer" class="small"></div>
+  <div class="section-title reveal" id="how"><h2>How it works</h2><p>From a forecast to a worker resting in the shade — every hour.</p></div>
+  <section class="steps">
+    <div class="card step tilt reveal"><div class="shine"></div><div class="em">🌡️</div><h4>Measure what bodies feel</h4><p>Hourly WBGT per zone from temperature, humidity, wind and sun — not just the day's maximum.</p></div>
+    <div class="card step tilt reveal" style="--d:.08s"><div class="shine"></div><div class="em">🗣️</div><h4>Tell workers, in Hindi</h4><p>Work–rest schedules by Telegram text and voice. Posters for labour chowks reach people without phones.</p></div>
+    <div class="card step tilt reveal" style="--d:.16s"><div class="shine"></div><div class="em">📋</div><h4>Task named officers</h4><p>Each plan action goes to the responsible department with a Done button. Workers can report back.</p></div>
+    <div class="card step tilt reveal" style="--d:.24s"><div class="shine"></div><div class="em">🔎</div><h4>Prove it ran</h4><p>A public log of planned vs done, a CAP feed for alert systems, and a backtest on real heatwaves.</p></div>
   </section>
 
-  <section class="card full" id="btCard">
-    <h2>Backtest — what the plan would have triggered</h2>
-    <div id="bt"><p class="muted">Loading…</p></div>
+  <div class="section-title reveal"><h2>Backtest</h2><p>What the plan's rules would have triggered in a real heatwave.</p></div>
+  <section class="card full reveal" id="btCard">
+    <div id="bt"><div class="skel"></div><div class="skel" style="width:60%"></div></div>
   </section>
 
-  <section class="card full">
-    <h2>New city: plan from PDF (admin)</h2>
-    <p class="small muted" style="margin-top:0">Upload a city's Heat Action Plan (PDF, up to 4 MB). Amazon Bedrock drafts the config, which is checked automatically; a person reviews it and adds zones before it goes live.</p>
-    <input type="file" id="pdf" accept="application/pdf"> <button class="primary" id="importBtn">Draft config</button>
-    <div id="importOut" class="small" style="margin-top:10px"></div>
+  <div class="section-title reveal"><h2>Add a city</h2><p>250+ Indian cities have a Heat Action Plan as a PDF. Start from theirs.</p></div>
+  <section class="card full reveal">
+    <label class="drop" id="drop"><input type="file" id="pdf" accept="application/pdf" hidden><div style="font-size:28px">📄</div><b id="dropLabel">Drop a Heat Action Plan PDF here, or click to choose</b><div class="note">Up to 4 MB · admin only · the draft is checked automatically and reviewed by a person before it goes live</div></label>
+    <div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="primary" id="importBtn">Draft config</button><span class="note" id="importHint"></span></div>
+    <div id="importOut" class="small" style="margin-top:12px"></div>
   </section>
-
-  <section class="card full note" id="honesty"></section>
 </main>
+
+<footer><div class="card note reveal" id="honesty"></div></footer>
+<div class="toasts" id="toasts"></div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script>
 const $ = s => document.querySelector(s);
-const BAND_C = ['--b0','--b1','--b2','--b3','--b4'].map(v => getComputedStyle(document.documentElement).getPropertyValue(v).trim());
-const cssv = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
-const TIER_C = {green:cssv('--t-green'),yellow:cssv('--t-yellow'),orange:cssv('--t-orange'),red:cssv('--t-red')};
-const REP = {water:'🚱 No drinking water',shade:'⛱️ No shade',work:'⛔ Work not stopped',ill:'🤒 Someone unwell'};
-let CITIES = {}, BANDS = [], mode = 'live', state = null, map, layer, selected = null;
+const $$ = s => [...document.querySelectorAll(s)];
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const store = {get(k){try{return localStorage.getItem(k)}catch(e){return null}}, set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+const cssv = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const BAND_C = () => ['--b0','--b1','--b2','--b3','--b4'].map(cssv);
+const TIER_C = () => ({green:cssv('--t-green'),yellow:cssv('--t-yellow'),orange:cssv('--t-orange'),red:cssv('--t-red')});
+const TIERS = ['green','yellow','orange','red'];
+const REP = {water:['🚱','No drinking water'],shade:['⛱️','No shade'],work:['⛔','Work not stopped'],ill:['🤒','Someone unwell']};
+const ROLE_IC = {water:'💧',labour:'👷',disaster:'🛟',health:'🏥'};
+let CITIES = {}, BANDS = [], mode = 'live', state = null, map, layer, selected = null;
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const pill = (txt, col) => `<span class="pill" style="background:${col}">${esc(txt)}</span>`;
+const pill = (txt, col, dark) => `<span class="pill${dark?' dark':''}" style="background:${col}">${esc(txt)}</span>`;
 const city = () => $('#city').value;
 const fmtTime = ts => ts ? new Date(ts*1000).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Kolkata'}) : '';
 
+/* ---------- theme ---------- */
+const themeIcon = () => $('#theme').textContent = document.documentElement.dataset.theme === 'light' ? '☾' : '☀︎';
+(function(){ const t = store.get('taap.theme'); if(t) document.documentElement.dataset.theme = t; themeIcon(); })();
+$('#theme').onclick = () => { const r = document.documentElement; r.dataset.theme = r.dataset.theme === 'light' ? 'dark' : 'light'; store.set('taap.theme', r.dataset.theme); themeIcon(); if(state) render(); };
+
+/* ---------- toasts ---------- */
+function toast(msg, kind=''){ const t = document.createElement('div'); t.className = 'toast '+kind; t.textContent = msg; $('#toasts').append(t); setTimeout(() => { t.style.transition='opacity .4s'; t.style.opacity=0; setTimeout(()=>t.remove(), 400); }, 4200); }
+
+/* ---------- motion helpers ---------- */
+const io = new IntersectionObserver(es => es.forEach(e => { if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } }), {threshold:.12, rootMargin:'0px 0px -40px 0px'});
+const observeReveals = () => $$('.reveal:not(.in)').forEach(el => io.observe(el));
+const growIO = new IntersectionObserver(es => es.forEach(e => { if(e.isIntersecting){ e.target.classList.add('go'); growIO.unobserve(e.target); } }), {threshold:.3});
+function countUp(el, to, {dec=0, suffix='', dur=1100}={}){
+  if(REDUCED || !isFinite(to)){ el.textContent = (isFinite(to)?to.toFixed(dec):'–')+suffix; return; }
+  const from = parseFloat(el.dataset.v || 0), t0 = performance.now(); el.dataset.v = to;
+  const step = now => { const p = Math.min(1,(now-t0)/dur), e = 1-Math.pow(1-p,3); el.textContent = (from+(to-from)*e).toFixed(dec)+suffix; if(p<1) requestAnimationFrame(step); };
+  requestAnimationFrame(step);
+}
+function bindTilt(root=document){
+  if(REDUCED || matchMedia('(hover: none)').matches) return;
+  root.querySelectorAll('.tilt:not([data-t])').forEach(el => {
+    el.dataset.t = 1;
+    el.addEventListener('mousemove', e => { const r = el.getBoundingClientRect(), x = (e.clientX-r.left)/r.width, y = (e.clientY-r.top)/r.height;
+      el.style.setProperty('--ry', ((x-.5)*8).toFixed(2)+'deg'); el.style.setProperty('--rx', ((.5-y)*8).toFixed(2)+'deg');
+      el.style.setProperty('--mx', (x*100)+'%'); el.style.setProperty('--my', (y*100)+'%'); });
+    el.addEventListener('mouseleave', () => { el.style.setProperty('--rx','0deg'); el.style.setProperty('--ry','0deg'); });
+  });
+}
+// orb follows the pointer in 3D
+if(!REDUCED) addEventListener('mousemove', e => { const x = e.clientX/innerWidth-.5, y = e.clientY/innerHeight-.5; $('#orb').style.transform = `rotateY(${x*24}deg) rotateX(${-y*24}deg)`; }, {passive:true});
+addEventListener('scroll', () => { const h = document.documentElement; $('#readbar').style.width = (h.scrollTop/(h.scrollHeight-h.clientHeight)*100)+'%'; }, {passive:true});
+
+/* ---------- embers ---------- */
+(function embers(){
+  const c = $('#embers'), ctx = c.getContext('2d'); if(REDUCED) return;
+  let w, h, ps = [], heat = .4, run = true;
+  const size = () => { w = c.width = c.offsetWidth*devicePixelRatio; h = c.height = c.offsetHeight*devicePixelRatio; };
+  size(); addEventListener('resize', size);
+  const spawn = () => ({x:Math.random()*w, y:h+10, r:(Math.random()*2.2+.6)*devicePixelRatio, vy:(Math.random()*.8+.4)*devicePixelRatio, vx:(Math.random()-.5)*.4, life:1, hue:20+Math.random()*25});
+  window.setHeat = v => heat = v;
+  document.addEventListener('visibilitychange', () => { run = !document.hidden; if(run) requestAnimationFrame(loop); });
+  function loop(){
+    if(!run) return;
+    ctx.clearRect(0,0,w,h);
+    const target = 30 + heat*90; while(ps.length < target) ps.push(spawn());
+    ps = ps.filter(p => p.life > 0 && p.y > -10);
+    for(const p of ps){ p.y -= p.vy*(1+heat); p.x += p.vx + Math.sin(p.y/60)*.3; p.life -= .0025 + (1-heat)*.002;
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,7); ctx.fillStyle = `hsla(${p.hue},100%,${55+p.r*4}%,${Math.max(0,p.life)*.8})`; ctx.shadowBlur = 12; ctx.shadowColor = `hsl(${p.hue},100%,55%)`; ctx.fill(); }
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+})();
+
+/* ---------- data ---------- */
 async function api(path, body){
   const r = await fetch(path, body ? {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)} : {});
   const j = await r.json().catch(()=>({error:'bad response'}));
@@ -131,132 +423,197 @@ async function init(){
   BANDS = d.bands;
   d.cities.forEach(c => { CITIES[c.id] = c; $('#city').insertAdjacentHTML('beforeend', `<option value="${c.id}">${esc(c.name)}</option>`); });
   const saved = store.get('taap.city'); $('#city').value = (saved && CITIES[saved]) ? saved : (CITIES.delhi ? 'delhi' : d.cities[0].id);
-  $('#legend').innerHTML = BANDS.map(b => `<span><i style="background:${BAND_C[b.band]}"></i>${b.band}: ${esc(b.label)}${b.band&&b.band<4?` (${b.work}/${b.rest} min)`:''}</span>`).join('');
-  map = L.map('map', {scrollWheelZoom:false});
+  const bc = BAND_C();
+  $('#legend').innerHTML = BANDS.map(b => `<span><i style="background:${bc[b.band]}"></i>${b.band} · ${esc(b.label)}${b.band&&b.band<4?` (${b.work}/${b.rest} min)`:''}</span>`).join('') + '<span>ring = plan tier · pulse speed = risk</span>';
+  map = L.map('map', {scrollWheelZoom:false, zoomControl:true});
   L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors', maxZoom:18, className:'tiles'}).addTo(map);
   layer = L.layerGroup().addTo(map);
   $('#city').onchange = () => { store.set('taap.city', city()); selected = null; setupCity(); };
   $('#mLive').onclick = () => setMode('live'); $('#mReplay').onclick = () => setMode('replay');
   $('#runReplay').onclick = runReplay;
-  $('#settings').onclick = () => { const t = prompt('Admin token (needed to run a replay):', store.get('taap.token')||''); if(t!==null) store.set('taap.token', t); };
+  $('#settings').onclick = () => { const t = prompt('Admin token (needed for replay and plan import):', store.get('taap.token')||''); if(t!==null){ store.set('taap.token', t); toast('Admin token saved','good'); } };
   $('#askForm').onsubmit = ask;
   $('#importBtn').onclick = importPlan;
+  setupDrop();
+  ['Which zones still have open actions?','When is it safe to work outside today?','What did the 2024 backtest show?'].forEach(q => { const b = document.createElement('button'); b.type='button'; b.textContent = q; b.onclick = () => { $('#q').value = q; $('#askForm').requestSubmit(); }; $('#suggest').append(b); });
+  moveSeg(); addEventListener('resize', moveSeg); document.fonts && document.fonts.ready.then(moveSeg);
   setupCity();
-  setInterval(() => mode==='live' && load(), 60000);
+  setInterval(() => mode==='live' && load(true), 60000);
 }
+
+function moveSeg(){ const on = $('#seg .on'), bg = $('#seg .pill-bg'); bg.style.left = on.offsetLeft+'px'; bg.style.width = on.offsetWidth+'px'; }
 
 function setupCity(){
   const c = CITIES[city()];
-  map.fitBounds(L.latLngBounds(c.zones.map(z => [z.lat, z.lon])).pad(0.25));
+  $('#heroCity').textContent = c.name;
+  const bounds = L.latLngBounds(c.zones.map(z => [z.lat, z.lon])).pad(0.25);
+  if(!map._loaded || REDUCED) map.fitBounds(bounds); else map.flyToBounds(bounds, {duration:1.1});
   $('#rdate').min = c.replay.start; $('#rdate').max = c.replay.end; $('#rdate').value = c.replay.default;
-  $('#honesty').innerHTML = `<b>How to read this.</b> ${c.notes.map(esc).join(' ')} Worker bands use hourly outdoor WBGT (Liljegren model: temperature, humidity, wind, sun) against ACGIH screening limits for heavy, acclimatised work; guidance, not medical advice. Weather: <a href="https://open-meteo.com">Open-Meteo</a> (CC-BY 4.0) — modelled values, not station readings. Replay uses ERA5 reanalysis, which runs below station peaks. Feeds: <a id="capLink" href="/cap.xml?city=${c.id}&mode=${mode}">CAP 1.2 XML</a> (the format India's SACHET system ingests).`;
+  $('#honesty').innerHTML = `<b>How to read this.</b> ${c.notes.map(esc).join(' ')} Worker bands use hourly outdoor WBGT (Liljegren model: temperature, humidity, wind, sun) against ACGIH screening limits for heavy, acclimatised work; guidance, not medical advice. Weather: <a href="https://open-meteo.com">Open-Meteo</a> (CC-BY 4.0) — modelled values, not station readings. Replay uses ERA5 reanalysis, which runs below station peaks. Feeds: <a id="capLink" href="/cap.xml?city=${c.id}&mode=${mode}">CAP 1.2 XML</a> (the format India's SACHET system ingests). Emergency: 112.`;
   load(); loadBacktest();
 }
 
-function setMode(m){ mode = m; const cap = document.querySelector('#capLink'); if(cap) cap.href = `/cap.xml?city=${city()}&mode=${mode}`; $('#mLive').classList.toggle('on', m==='live'); $('#mReplay').classList.toggle('on', m==='replay'); $('#replayBox').hidden = m!=='replay'; load(); }
+function setMode(m){
+  mode = m; $('#mLive').classList.toggle('on', m==='live'); $('#mReplay').classList.toggle('on', m==='replay'); moveSeg();
+  $('#replayBox').hidden = m!=='replay';
+  const cap = $('#capLink'); if(cap) cap.href = `/cap.xml?city=${city()}&mode=${mode}`;
+  load();
+}
 
 async function runReplay(){
   const token = store.get('taap.token');
-  if(!token){ alert('Set the admin token first (⚙︎).'); return; }
-  $('#runReplay').disabled = true; $('#runReplay').textContent = 'Running…';
-  try{ await api('/api/replay', {city:city(), date:$('#rdate').value, token, notify:true}); await load(); }
-  catch(e){ alert('Replay failed: '+e.message); }
-  finally{ $('#runReplay').disabled = false; $('#runReplay').textContent = '▶ Run replay'; }
+  if(!token){ toast('Set the admin token first (⚙︎).','bad'); return; }
+  const b = $('#runReplay'); b.disabled = true; b.textContent = 'Running…';
+  try{ const r = await api('/api/replay', {city:city(), date:$('#rdate').value, token, notify:true}); await load();
+       const st = r.snapshot.stats || {}; toast(`Replay ${r.snapshot.date}: ${st.actions_created||0} actions, ${st.officer_messages||0} officer messages, ${st.worker_alerts||0} worker alerts`,'good'); }
+  catch(e){ toast('Replay failed: '+e.message,'bad'); }
+  finally{ b.disabled = false; b.textContent = '▶ Run replay'; }
 }
 
-async function load(){
+async function load(quiet){
   const qs = new URLSearchParams({city:city(), mode}); if(mode==='replay') qs.set('date', $('#rdate').value);
-  try{ state = await api('/api/state?'+qs); }catch(e){ state = {snapshot:null,actions:[],reports:[]}; }
+  try{ state = await api('/api/state?'+qs); }catch(e){ state = {snapshot:null,actions:[],reports:[]}; if(!quiet) toast('Could not load state: '+e.message,'bad'); }
   render();
 }
 
 function render(){
-  const s = state.snapshot, c = CITIES[city()];
+  const s = state.snapshot, c = CITIES[city()], bc = BAND_C(), tc = TIER_C();
   layer.clearLayers();
-  $('#mapTitle').textContent = s ? `${c.name} · ${s.date}${mode==='replay'?' · REPLAY':''}` : `${c.name} · no data yet`;
-  $('#kTier').innerHTML = s ? pill(s.tier, TIER_C[s.tier]) : '–';
-  $('#kBand').innerHTML = s ? pill(`${s.max_band} · ${BANDS[s.max_band].label}`, BAND_C[s.max_band]) : '–';
-  const done = state.actions.filter(a => a.status==='done').length;
-  $('#kActs').textContent = state.actions.length ? `${done} / ${state.actions.length}` : '0';
-  $('#kReps').textContent = state.reports.filter(r => r.status!=='resolved').length;
+  $('#heroMode').textContent = mode==='replay' ? `Replay · ${s ? s.date : $('#rdate').value}` : 'Live · updated hourly';
+  $('#mapTitle').textContent = s ? `${c.name} · ${s.date}${mode==='replay'?' · replay':''} · ${s.zones.filter(z=>z.available).length} zones` : `${c.name} · no data yet${mode==='replay'?' — run the replay':''}`;
+  // hero status + orb
+  if(s){
+    const top = [...s.zones].filter(z=>z.available).sort((a,b)=>b.peak_wbgt-a.peak_wbgt)[0];
+    const b = BANDS[s.max_band];
+    $('#heroStatus').innerHTML = `<span class="chip"><i style="color:${tc[s.tier]};background:${tc[s.tier]}"></i>Plan tier: ${esc(s.tier.toUpperCase())}</span>
+      <span class="chip"><i style="color:${bc[s.max_band]};background:${bc[s.max_band]}"></i>Workers: ${esc(b.label)}</span>
+      ${top?`<span class="chip">🔥 Hottest: ${esc(c.zones.find(z=>z.id===top.zone).name)} ${top.start?`· ${top.start}–${top.end}`:''}</span>`:''}`;
+    countUp($('#orbVal'), top ? top.peak_wbgt : NaN, {dec:1, suffix:'°'});
+    window.setHeat && setHeat(Math.min(1, s.max_band/4 + .15));
+  } else { $('#heroStatus').innerHTML = `<span class="chip">No data yet${mode==='replay'?' — pick a date and run the replay':''}</span>`; $('#orbVal').textContent = '–'; }
+  // KPIs
+  $('#kTier').innerHTML = s ? pill(s.tier, tc[s.tier]) : '–';
+  $('#kTierBar').style.width = s ? ((TIERS.indexOf(s.tier)+1)/4*100)+'%' : '0';
+  $('#kBand').innerHTML = s ? pill(`${s.max_band} · ${BANDS[s.max_band].label}`, bc[s.max_band], s.max_band===4) : '–';
+  $('#kBandBar').style.width = s ? ((s.max_band+1)/5*100)+'%' : '0';
+  const done = state.actions.filter(a => a.status==='done').length, total = state.actions.length, pct = total ? done/total*100 : 0;
+  $('#kActs').innerHTML = total ? `<span id="kActsN">0</span>&nbsp;<span style="color:var(--muted);font-size:20px">/ ${total}</span>` : '0';
+  if(total) countUp($('#kActsN'), done);
+  $('#kActsBar').style.width = pct+'%';
+  const openReps = state.reports.filter(r => r.status!=='resolved').length;
+  countUp($('#kReps'), openReps); $('#kRepsBar').style.width = Math.min(100, openReps*20)+'%';
+  // map
   if(s) s.zones.forEach(zr => {
     if(!zr.available) return;
     const z = c.zones.find(x => x.id===zr.zone);
-    const m = L.circleMarker([z.lat, z.lon], {radius:16, color:TIER_C[zr.tier], weight:4, fillColor:BAND_C[zr.band], fillOpacity:.85});
-    m.bindTooltip(`<b>${esc(z.name)}</b><br>WBGT ${zr.peak_wbgt}°C · band ${zr.band}<br>Tmax ${zr.tmax}°C · ${zr.tier}${zr.hot_night?' · hot night':''}`);
-    m.on('click', () => { selected = zr.zone; renderZone(); });
+    const icon = L.divIcon({className:'', iconSize:[26,26], iconAnchor:[13,13],
+      html:`<div class="zm${selected===zr.zone?' sel':''}" style="--c:${bc[zr.band]};--tier:${tc[zr.tier]};--sp:${(2.8-zr.band*.45).toFixed(2)}s"><span class="pulse"></span><span class="pulse p2"></span><span class="dot"></span></div>`});
+    const m = L.marker([z.lat, z.lon], {icon, keyboard:true, title:z.name});
+    m.bindTooltip(`<b>${esc(z.name)}</b> <span class="hi">${esc(z.name_hi)}</span><br>WBGT ${zr.peak_wbgt}°C · band ${zr.band}<br>Tmax ${zr.tmax}°C · ${zr.tier}${zr.hot_night?' · hot night':''}`, {className:'tip', direction:'top', offset:[0,-12]});
+    m.on('click', () => { selected = zr.zone; render(); document.querySelector('#zone').scrollIntoView({behavior:'smooth', block:'nearest'}); });
     m.addTo(layer);
     L.tooltip({permanent:true, direction:'bottom', offset:[0,14], className:'zl', interactive:false}).setLatLng([z.lat, z.lon]).setContent(esc(z.name)).addTo(layer);
   });
-  if(s && !selected){ selected = [...s.zones].filter(z=>z.available).sort((a,b)=>b.peak_wbgt-a.peak_wbgt)[0]?.zone; }
+  if(s && !selected){ selected = [...s.zones].filter(z=>z.available).sort((a,b)=>b.peak_wbgt-a.peak_wbgt)[0]?.zone; if(selected) return render(); }
   renderZone();
-  $('#acts').innerHTML = state.actions.length ? state.actions.map(a => `<tr><td>${esc(a.zone_name)}</td><td>${esc(a.text_rendered)}</td><td>${esc(c.roles[a.role]||a.role)}</td>
-    <td>${a.status==='done'?`<span class="done">✅ Done</span><br><span class="small muted">${esc(a.done_by)} · ${fmtTime(a.done_at)}</span>`:'<span class="open">● Open</span>'}</td><td class="small muted">${esc(a.ref)}</td></tr>`).join('')
-    : `<tr><td colspan="5" class="muted">${s && s.tier==='green' ? 'Plan not active today (green tier): departments are not tasked. Workers still get WBGT work–rest guidance.' : 'No plan actions triggered.'}</td></tr>`;
-  $('#reps').innerHTML = state.reports.length ? state.reports.map(r => `<tr><td>${esc(r.time)}</td><td>${esc(r.zone_name)}</td><td>${REP[r.type]||esc(r.type)}</td><td>${r.status==='resolved'?`<span class="done">Resolved</span> <span class="small muted">${esc(r.resolved_by)}</span>`:'<span class="open">Open</span>'}</td></tr>`).join('')
-    : `<tr><td colspan="4" class="muted">No reports today.</td></tr>`;
+  // actions
+  $('#actBar').style.width = pct+'%'; $('#actPct').textContent = total ? `${done}/${total} done · ${Math.round(pct)}%` : '—';
+  $('#acts').innerHTML = total ? state.actions.map((a,i) => `<div class="act" style="--i:${i};--c:${tc[a.tier]||cssv('--ember')}"><div class="ic">${ROLE_IC[a.role]||'📌'}</div>
+      <div><div class="t">${esc(a.text_rendered)}</div><div class="s">${esc(a.zone_name)} · ${esc(c.roles[a.role]||a.role)} · ${esc(a.ref)}</div></div>
+      <div style="text-align:right">${a.status==='done'?`<span class="status-chip done">✓ Done</span><div class="s" style="margin-top:4px">${esc(a.done_by)} · ${fmtTime(a.done_at)}</div>`:'<span class="status-chip open">● Open</span>'}</div></div>`).join('')
+    : `<div class="empty">${s && s.tier==='green' ? 'The plan is not active today (green tier), so departments are not tasked. Workers still get WBGT work–rest guidance.' : mode==='replay' ? 'Run the replay to see the plan fire.' : 'No plan actions triggered.'}</div>`;
+  // reports
+  $('#reps').innerHTML = state.reports.length ? state.reports.map((r,i) => `<div class="rep" style="animation-delay:${i*40}ms"><span style="font-size:20px">${(REP[r.type]||['📣'])[0]}</span><div class="grow"><b>${esc((REP[r.type]||['',r.type])[1])}</b><div class="note">${esc(r.zone_name)}</div></div><span class="time">${esc(r.time)}</span>${r.status==='resolved'?'<span class="status-chip done">Resolved</span>':'<span class="status-chip open">Open</span>'}</div>`).join('')
+    : '<div class="empty">No reports today. Workers report from the Telegram bot: no water, no shade, work not stopped, someone unwell.</div>';
+  bindTilt();
 }
 
 function renderZone(){
-  const s = state?.snapshot; const c = CITIES[city()];
+  const s = state?.snapshot, c = CITIES[city()], bc = BAND_C(), tc = TIER_C();
   const zr = s?.zones.find(z => z.zone===selected);
-  if(!zr || !zr.available){ $('#zone').innerHTML = '<p class="muted">Select a zone on the map.</p>'; return; }
+  if(!zr || !zr.available){ $('#zone').innerHTML = '<div class="empty">Select a zone on the map.</div>'; return; }
   const z = c.zones.find(x => x.id===zr.zone), b = BANDS[zr.band];
-  const rule = zr.band===0 ? 'Normal work; keep drinking water.' : zr.band>=4 ? `Stop heavy work ${zr.start}–${zr.end} IST.` : `Heavy work ${zr.start}–${zr.end} IST: ${b.work} min work / ${b.rest} min rest each hour.`;
+  const rule = zr.band===0 ? 'Normal work — keep drinking water.' : zr.band>=4 ? `Stop heavy work ${zr.start}–${zr.end} IST.` : `Heavy work ${zr.start}–${zr.end} IST: ${b.work} min work / ${b.rest} min rest each hour.`;
   const qs = new URLSearchParams({city:city(), mode, zone:zr.zone, date:s.date});
-  $('#zone').innerHTML = `<h3 style="margin:0 0 4px">${esc(z.name)} <span class="muted small">${esc(z.name_hi)}</span></h3>
-    <div>${pill(zr.tier, TIER_C[zr.tier])} ${pill('band '+zr.band, BAND_C[zr.band])} ${zr.hot_night?pill('hot night '+zr.night_min+'°C','#37474f'):''}</div>
-    <p style="margin:10px 0"><b>${esc(rule)}</b></p>
-    <div class="small muted">Hourly WBGT (IST)</div>
-    <div class="hours">${zr.hourly.map(h => `<div title="${h.hour}:00 · ${h.temp}°C · ${h.rh}% RH · WBGT ${h.wbgt}°C" style="background:${BAND_C[h.band]};opacity:${.35+.65*Math.min(1,Math.max(0,(h.wbgt-18)/15))}">${h.hour%3===0?`<span>${h.hour}</span>`:''}</div>`).join('')}</div>
-    <p class="small" style="margin-top:22px">Peak WBGT <b>${zr.peak_wbgt}°C</b> at ${String(zr.peak_hour).padStart(2,'0')}:00 · Tmax ${zr.tmax}°C${zr.night_min!=null?` · night low ${zr.night_min}°C`:''}</p>
-    <p><a href="/poster?${qs}" target="_blank">🖨️ Printable Hindi poster for labour chowks</a></p>`;
+  const R = 50, C = 2*Math.PI*R, frac = Math.max(0, Math.min(1, (zr.peak_wbgt-18)/16));
+  const nowH = mode==='live' ? new Date().toLocaleString('en-GB',{hour:'2-digit',hour12:false,timeZone:'Asia/Kolkata'})*1 : -1;
+  const maxW = Math.max(...zr.hourly.map(h=>h.wbgt), 32), minW = Math.min(...zr.hourly.map(h=>h.wbgt), 15);
+  $('#zone').innerHTML = `<div class="zone-head">
+      <div class="gauge"><svg width="118" height="118" viewBox="0 0 118 118"><circle class="track" cx="59" cy="59" r="${R}" fill="none" stroke-width="10"/>
+        <circle class="val" id="gv" cx="59" cy="59" r="${R}" fill="none" stroke="${bc[zr.band]}" stroke-width="10" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C}" style="filter:drop-shadow(0 0 6px ${bc[zr.band]})"/></svg>
+        <div class="num"><div><b id="gnum">0</b><small>WBGT °C</small></div></div></div>
+      <div><p class="zone-name">${esc(z.name)} <span class="hi" style="color:var(--muted);font-size:17px">${esc(z.name_hi)}</span></p>
+        <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">${pill(zr.tier, tc[zr.tier])} ${pill('band '+zr.band+' · '+b.label, bc[zr.band], zr.band===4)} ${zr.hot_night?pill('🌙 hot night '+zr.night_min+'°','#3a3f4b',true):''}</div></div></div>
+    <div class="rule" style="--c:${bc[zr.band]}">${esc(rule)}</div>
+    <div class="note">Hourly WBGT (IST)${nowH>=0?' · outlined = now':''}</div>
+    <div class="hours" id="hrs">${zr.hourly.map(h => `<div class="${h.hour===nowH?'now':''}" style="--i:${h.hour};height:${(12+88*(h.wbgt-minW)/Math.max(1,maxW-minW)).toFixed(0)}%;background:linear-gradient(180deg,${bc[h.band]},color-mix(in srgb,${bc[h.band]} 45%,transparent))" title="${h.hour}:00 · ${h.temp}°C · ${h.rh}% RH · WBGT ${h.wbgt}°C"></div>`).join('')}</div>
+    <div class="axis">${zr.hourly.map(h => `<span>${h.hour%3===0?h.hour:''}</span>`).join('')}</div>
+    <div class="meta"><span>Peak <b>${zr.peak_wbgt}°C</b> at ${String(zr.peak_hour).padStart(2,'0')}:00</span><span>Tmax <b>${zr.tmax}°C</b></span>${zr.night_min!=null?`<span>Night low <b>${zr.night_min}°C</b></span>`:''}<span><a href="/poster?${qs}" target="_blank">🖨️ Hindi poster</a></span></div>`;
+  requestAnimationFrame(() => { const gv = $('#gv'); if(gv) gv.style.strokeDashoffset = C*(1-frac); countUp($('#gnum'), zr.peak_wbgt, {dec:1}); });
+  const hrs = $('#hrs'); REDUCED ? hrs.classList.add('go') : growIO.observe(hrs);
 }
 
 async function loadBacktest(){
-  $('#bt').innerHTML = '<p class="muted">Loading…</p>';
+  $('#bt').innerHTML = '<div class="skel"></div><div class="skel" style="width:60%"></div><div class="skel" style="width:80%"></div>';
   try{
-    const b = await api('/api/backtest?city='+city()); const s = b.summary;
+    const b = await api('/api/backtest?city='+city()); const s = b.summary, bc = BAND_C();
     const maxT = Math.max(...b.days.map(d=>d.tmax)), minT = Math.min(...b.days.map(d=>d.tmax));
-    $('#bt').innerHTML = `<p class="small">Replaying <b>${b.window.start} → ${b.window.end}</b> through the plan. ${esc(b.reference_event.text||'')}</p>
+    const n = (k, label) => `<div><b data-n="${s[k]??''}">–</b><span>${label}</span></div>`;
+    $('#bt').innerHTML = `<p style="margin:0">Replaying <b>${b.window.start} → ${b.window.end}</b> through the plan. ${esc(b.reference_event.text||'')}</p>
       <div class="nums">
-        <div><b>${s.first_worker_warning||'–'}</b><span class="small muted">first worker warning (band ≥3)${s.lead_days_before_reference!=null?` · ${s.lead_days_before_reference} days before the reference peak`:''}${s.warning_from_window_start?' (already active at window start)':''}</span></div>
-        <div><b>${s.days_with_band3_plus}</b><span class="small muted">days needing work–rest limits</span></div>
-        <div><b>${s.zone_days_band3_plus}</b><span class="small muted">zone-days of band ≥3 alerts</span></div>
-        <div><b>${s.days_orange_or_red}</b><span class="small muted">days at orange/red tier</span></div>
-        <div><b>${s.hot_night_zone_days}</b><span class="small muted">zone-days escalated by hot nights</span></div>
-        <div><b>${s.actions_triggered}</b><span class="small muted">plan actions that would have been assigned</span></div>
+        <div><b style="font-size:20px">${s.first_worker_warning||'–'}</b><span>first worker warning (band ≥3)${s.lead_days_before_reference!=null?` · ${s.lead_days_before_reference} days before the reference peak`:''}${s.warning_from_window_start?' (already active at window start)':''}</span></div>
+        ${n('days_with_band3_plus','days needing work–rest limits')}${n('zone_days_band3_plus','zone-days of band ≥3 alerts')}${n('days_orange_or_red','days at orange/red tier')}${n('hot_night_zone_days','zone-days raised by hot nights')}${n('actions_triggered','plan actions that would have been assigned')}
       </div>
-      <div class="bt">${b.days.map(d => `<div title="${d.date}: Tmax ${d.tmax}°C · WBGT ${d.peak_wbgt}°C · band ${d.max_band} · ${d.tier}" style="height:${15+85*(d.tmax-minT)/Math.max(1,maxT-minT)}%;background:${BAND_C[d.max_band]};${d.date===b.reference_event.date?'outline:2px solid var(--ink)':''}"></div>`).join('')}</div>
-      <p class="note">Bar height = modelled daily Tmax, colour = worst worker band; outlined = reference day. ${esc(b.caveat)}</p>`;
-  }catch(e){ $('#bt').innerHTML = `<p class="muted">Backtest unavailable: ${esc(e.message)}</p>`; }
-}
-
-async function importPlan(){
-  const f = $('#pdf').files[0], token = store.get('taap.token'), out = $('#importOut');
-  if(!f){ out.textContent = 'Choose a PDF first.'; return; }
-  if(!token){ out.textContent = 'Set the admin token first (⚙︎).'; return; }
-  if(f.size > 4*1024*1024){ out.textContent = 'PDF must be under 4 MB.'; return; }
-  out.textContent = 'Reading the plan… (up to a minute)'; $('#importBtn').disabled = true;
-  try{
-    const b64 = await new Promise((ok, bad) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1]); r.onerror = bad; r.readAsDataURL(f); });
-    const res = await api('/api/plan-import', {token, pdf_b64:b64});
-    if(res.error){ out.innerHTML = `<p class="open">${esc(res.error)}</p>`; return; }
-    const json = JSON.stringify(res.draft, null, 2);
-    const url = URL.createObjectURL(new Blob([json], {type:'application/json'}));
-    out.innerHTML = (res.problems.length ? `<p class="open">Needs fixing before it can run:</p><ul>${res.problems.map(p=>`<li>${esc(p)}</li>`).join('')}</ul>` : '<p class="done">Valid plan structure. Review the thresholds and duties against the PDF, then add zones.</p>')
-      + `<p><a href="${url}" download="${esc(res.draft.id||'city')}.json">⬇ Download draft config</a></p><pre style="max-height:320px;overflow:auto;background:var(--bg);padding:10px;border-radius:8px">${esc(json)}</pre>`;
-  }catch(e){ out.innerHTML = `<p class="open">Import failed: ${esc(e.message)}</p>`; }
-  finally{ $('#importBtn').disabled = false; }
+      <div class="bt" id="btbars">${b.days.map((d,i) => `<div class="${d.date===b.reference_event.date?'ref':''}" title="${d.date}: Tmax ${d.tmax}°C · WBGT ${d.peak_wbgt}°C · band ${d.max_band} · ${d.tier}" style="--i:${i};height:${15+85*(d.tmax-minT)/Math.max(1,maxT-minT)}%;background:linear-gradient(180deg,${bc[d.max_band]},color-mix(in srgb,${bc[d.max_band]} 40%,transparent))"></div>`).join('')}</div>
+      <p class="note">Bar height = modelled daily Tmax · colour = worst worker band · outlined = reference day. ${esc(b.caveat)}</p>`;
+    const nums = $$('#bt b[data-n]');
+    const go = () => nums.forEach(el => el.dataset.n !== '' ? countUp(el, +el.dataset.n, {dur:1500}) : null);
+    const bars = $('#btbars');
+    if(REDUCED){ bars.classList.add('go'); go(); }
+    else new IntersectionObserver((es, o) => es.forEach(e => { if(e.isIntersecting){ bars.classList.add('go'); go(); o.disconnect(); } }), {threshold:.25}).observe(bars);
+  }catch(e){ $('#bt').innerHTML = `<div class="empty">Backtest unavailable: ${esc(e.message)}</div>`; }
 }
 
 async function ask(e){
   e.preventDefault(); const q = $('#q').value.trim(); if(!q) return;
-  $('#answer').textContent = 'Thinking…';
-  try{ const r = await api('/api/ask', {question:q, city:city()}); $('#answer').textContent = r.answer; }
-  catch(err){ $('#answer').textContent = 'Assistant unavailable: '+err.message; }
+  const chat = $('#answer');
+  chat.insertAdjacentHTML('beforeend', `<div class="bubble me">${esc(q)}</div><div class="bubble ai" id="pending"><span class="typing"><i></i><i></i><i></i></span></div>`);
+  chat.scrollTop = chat.scrollHeight; $('#q').value = '';
+  try{ const r = await api('/api/ask', {question:q, city:city()}); $('#pending').textContent = r.answer; }
+  catch(err){ $('#pending').textContent = 'Assistant unavailable: '+err.message; }
+  $('#pending').removeAttribute('id'); chat.scrollTop = chat.scrollHeight;
 }
-init().catch(e => document.body.insertAdjacentHTML('afterbegin', `<p style="padding:16px">Failed to load: ${esc(e.message)}</p>`));
+
+function setupDrop(){
+  const d = $('#drop'), f = $('#pdf');
+  const show = () => { $('#dropLabel').textContent = f.files[0] ? `📎 ${f.files[0].name} (${(f.files[0].size/1048576).toFixed(1)} MB)` : 'Drop a Heat Action Plan PDF here, or click to choose'; };
+  f.onchange = show;
+  ['dragenter','dragover'].forEach(ev => d.addEventListener(ev, e => { e.preventDefault(); d.classList.add('over'); }));
+  ['dragleave','drop'].forEach(ev => d.addEventListener(ev, e => { e.preventDefault(); d.classList.remove('over'); }));
+  d.addEventListener('drop', e => { if(e.dataTransfer.files[0]){ f.files = e.dataTransfer.files; show(); } });
+}
+
+async function importPlan(){
+  const f = $('#pdf').files[0], token = store.get('taap.token'), out = $('#importOut');
+  if(!f){ toast('Choose a PDF first.','bad'); return; }
+  if(!token){ toast('Set the admin token first (⚙︎).','bad'); return; }
+  if(f.size > 4*1024*1024){ toast('PDF must be under 4 MB.','bad'); return; }
+  out.innerHTML = '<div class="skel"></div><div class="skel" style="width:70%"></div><p class="note">Reading the plan… (up to a minute)</p>'; $('#importBtn').disabled = true;
+  try{
+    const b64 = await new Promise((ok, bad) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1]); r.onerror = bad; r.readAsDataURL(f); });
+    const res = await api('/api/plan-import', {token, pdf_b64:b64});
+    if(res.error){ out.innerHTML = `<div class="empty" style="color:#ff6961">${esc(res.error)}</div>`; return; }
+    const json = JSON.stringify(res.draft, null, 2);
+    const url = URL.createObjectURL(new Blob([json], {type:'application/json'}));
+    out.innerHTML = (res.problems.length ? `<p style="color:#ff6961;font-weight:700">Needs fixing before it can run:</p><ul>${res.problems.map(p=>`<li>${esc(p)}</li>`).join('')}</ul>` : '<p style="color:var(--b0);font-weight:700">✓ Valid plan structure. Review thresholds and duties against the PDF, then add zones.</p>')
+      + `<p><a class="ghost" href="${url}" download="${esc(res.draft.id||'city')}.json">⬇ Download draft config</a></p><pre>${esc(json)}</pre>`;
+    toast('Draft config ready','good');
+  }catch(e){ out.innerHTML = `<div class="empty" style="color:#ff6961">Import failed: ${esc(e.message)}</div>`; }
+  finally{ $('#importBtn').disabled = false; }
+}
+
+observeReveals(); bindTilt();
+init().catch(e => toast('Failed to load: '+e.message,'bad'));
 </script>
 </body>
 </html>
