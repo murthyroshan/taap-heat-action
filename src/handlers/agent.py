@@ -89,14 +89,26 @@ def _tools(st, mode_default="live"):
     return [zone_risk, plan_actions, worker_reports, plan_text, heatwave_backtest]
 
 
+def provider() -> str:
+    return os.environ.get("MODEL_PROVIDER", "bedrock").lower()
+
+
+def make_model(temperature: float = 0.2):
+    """Amazon Bedrock when deployed; a local Ollama model in the no-AWS-account ("Build It") mode."""
+    if provider() == "ollama":
+        from strands.models.ollama import OllamaModel
+        return OllamaModel(os.environ.get("OLLAMA_HOST", "http://localhost:11434"),
+                           model_id=os.environ.get("OLLAMA_MODEL", "llama3.2:3b"), temperature=temperature)
+    from strands.models import BedrockModel
+    return BedrockModel(model_id=os.environ.get("MODEL_ID", "apac.amazon.nova-lite-v1:0"),
+                        region_name=os.environ.get("AWS_REGION", "ap-south-1"), temperature=temperature)
+
+
 def answer(question: str, city: str, st=None) -> str:
     from strands import Agent
-    from strands.models import BedrockModel
 
     st = st or store.get_store()
-    model = BedrockModel(model_id=os.environ.get("MODEL_ID", "apac.amazon.nova-lite-v1:0"),
-                         region_name=os.environ.get("AWS_REGION", "ap-south-1"), temperature=0.2)
-    agent = Agent(model=model, system_prompt=SYSTEM + f"\nThe officer's city is '{city}'.",
+    agent = Agent(model=make_model(), system_prompt=SYSTEM + f"\nThe officer's city is '{city}'.",
                   tools=_tools(st), callback_handler=None)
     return str(agent(question)).strip()
 
@@ -120,11 +132,25 @@ Only use thresholds and duties that the plan actually states; if the plan does n
 """
 
 
-def import_plan(pdf: bytes) -> dict:
-    """Draft a city config from a Heat Action Plan PDF. A human must review it before it goes live."""
-    import boto3
-    from heatplan.plan import validate_city
+def _read_pdf_text(pdf: bytes, max_chars: int = 60000) -> str:
+    import io
 
+    from pypdf import PdfReader
+    pages = []
+    for page in PdfReader(io.BytesIO(pdf)).pages:
+        pages.append(f"[page {len(pages) + 1}]\n{page.extract_text() or ''}")
+        if sum(len(p) for p in pages) > max_chars:
+            break
+    return "\n".join(pages)[:max_chars]
+
+
+def _model_reply(pdf: bytes) -> str:
+    if provider() == "ollama":  # local models cannot read PDFs: extract the text first
+        from strands import Agent
+        agent = Agent(model=make_model(temperature=0.1), callback_handler=None)
+        return str(agent(IMPORT_PROMPT.replace("(attached PDF)", "(text below)")
+                         + "\n\nPLAN TEXT:\n" + _read_pdf_text(pdf)))
+    import boto3
     client = boto3.client("bedrock-runtime", region_name=os.environ.get("AWS_REGION", "ap-south-1"))
     res = client.converse(
         modelId=os.environ.get("MODEL_ID", "apac.amazon.nova-lite-v1:0"),
@@ -133,7 +159,14 @@ def import_plan(pdf: bytes) -> dict:
             {"text": IMPORT_PROMPT}]}],
         inferenceConfig={"maxTokens": 3000, "temperature": 0.1},
     )
-    text = "".join(c.get("text", "") for c in res["output"]["message"]["content"])
+    return "".join(c.get("text", "") for c in res["output"]["message"]["content"])
+
+
+def import_plan(pdf: bytes) -> dict:
+    """Draft a city config from a Heat Action Plan PDF. A human must review it before it goes live."""
+    from heatplan.plan import validate_city
+
+    text = _model_reply(pdf)
     start, end = text.find("{"), text.rfind("}")
     if start < 0 or end <= start:
         return {"error": "The model did not return a config.", "raw": text[:2000]}
@@ -141,6 +174,8 @@ def import_plan(pdf: bytes) -> dict:
         draft = json.loads(text[start:end + 1])
     except json.JSONDecodeError as e:
         return {"error": f"The model returned invalid JSON ({e.msg}).", "raw": text[:2000]}
+    if not isinstance(draft, dict):
+        return {"error": "The model did not return a config object.", "raw": text[:2000]}
     draft.setdefault("timezone", "Asia/Kolkata")
     draft.setdefault("zones", [])
     draft.setdefault("alert_min_band", 2)

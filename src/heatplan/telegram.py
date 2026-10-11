@@ -19,7 +19,7 @@ class Telegram:
     def enabled(self) -> bool:
         return bool(self.token)
 
-    def call(self, method: str, payload: dict) -> dict:
+    def call(self, method: str, payload: dict, timeout: float = 15) -> dict:
         if not self.enabled:
             print(f"[telegram disabled] {method}: {json.dumps(payload, ensure_ascii=False)[:300]}")
             return {}
@@ -28,7 +28,7 @@ class Telegram:
                                      headers={"Content-Type": "application/json"})
         for attempt in range(2):
             try:
-                with urllib.request.urlopen(req, timeout=15) as r:
+                with urllib.request.urlopen(req, timeout=timeout) as r:
                     return json.loads(r.read())
             except urllib.error.HTTPError as e:
                 body = e.read()[:300]

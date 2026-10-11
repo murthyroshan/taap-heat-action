@@ -68,15 +68,23 @@ EventBridge Scheduler (hourly, IST)
   - The replay uses ERA5 reanalysis, which runs below station peaks. IMD recorded 49.9 °C at Mungeshpur and Narela on 28 May 2024; the 52.9 °C reading was a sensor error and is not used.
 - **Guidance only.** The work–rest guidance is not medical advice. Emergency number in all messages: **112**.
 
-## Run locally (no AWS needed)
+## Run on your own machine: no AWS account ("Build It")
 
-```bash
-pip install pytest boto3
-python -m pytest -q tests                # 31 tests
-python scripts/local_server.py           # http://localhost:8000 (admin token: "local")
-```
+Everything runs locally in one process. The officer assistant and the plan-PDF import use **Strands Agents** (AWS's open-source agent SDK) on a local **Ollama** model. State is kept in a SQLite file, and the Telegram bot uses long polling, so no public URL is needed.
 
-## Deploy
+1. Install [Ollama](https://ollama.com/download), then `ollama pull llama3.2:3b`.
+2. `pip install -r requirements-local.txt`
+3. Copy `.env.example` to `.env` and set `TELEGRAM_TOKEN`, `OFFICER_CODE` and `ADMIN_TOKEN`.
+4. `python scripts/run_local.py`, then open http://localhost:8000.
+
+What's different from the AWS deployment:
+- no Hindi voice notes (Amazon Polly needs an AWS account), so alerts are text only;
+- the model runs on your machine;
+- the 2024 replay data is fetched from Open-Meteo on first use and cached locally.
+
+Tests: `pip install pytest boto3 && python -m pytest -q tests`.
+
+## Deploy to AWS ("Ship It")
 
 Prerequisites: an AWS account (Paid plan recommended; credits still apply), AWS CLI, SAM CLI, Python 3.10+, and a Telegram bot token from [@BotFather](https://t.me/BotFather).
 

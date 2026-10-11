@@ -188,3 +188,14 @@ def test_validator_catches_bad_drafts():
     errs = " | ".join(plan.validate_city(bad, require_zones=False))
     for needle in ("yellow < orange", "hot_night_c", "not in roles", "band must be", "{zone}", "duplicate", "'when' needs"):
         assert needle in errs, needle
+
+
+def test_sqlite_store_matches_memory_store(tmp_path):
+    for st in (store.MemoryStore(), store.SqliteStore(str(tmp_path / "t.db"))):
+        assert st.put("P", "b", {"x": 1}) and st.put("P", "a", {"x": "हिंदी"})
+        assert not st.put("P", "a", {"x": 2}, if_absent=True)
+        assert st.get("P", "a") == {"x": "हिंदी"} and st.get("P", "zz") is None
+        assert [r["sk"] for r in st.query("P")] == ["a", "b"]
+        assert [r["sk"] for r in st.query("P", newest_first=True, limit=1)] == ["b"]
+        st.delete("P", "a")
+        assert [r["sk"] for r in st.query("P")] == ["b"]

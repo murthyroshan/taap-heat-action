@@ -41,6 +41,45 @@ class MemoryStore:
         self.items.pop((pk, sk), None)
 
 
+class SqliteStore:
+    """Same interface on a local SQLite file: the no-AWS-account ("Build It") mode."""
+
+    def __init__(self, path: str):
+        import sqlite3
+        import threading
+
+        self._lock = threading.Lock()
+        self.db = sqlite3.connect(path, check_same_thread=False)
+        self.db.execute("CREATE TABLE IF NOT EXISTS items (pk TEXT, sk TEXT, data TEXT, PRIMARY KEY (pk, sk))")
+        self.db.commit()
+
+    def put(self, pk, sk, data, if_absent=False) -> bool:
+        blob = json.dumps(data, ensure_ascii=False)
+        with self._lock:
+            verb = "INSERT OR IGNORE" if if_absent else "INSERT OR REPLACE"
+            cur = self.db.execute(f"{verb} INTO items (pk, sk, data) VALUES (?, ?, ?)", (pk, sk, blob))
+            self.db.commit()
+            return cur.rowcount == 1
+
+    def get(self, pk, sk):
+        with self._lock:
+            row = self.db.execute("SELECT data FROM items WHERE pk = ? AND sk = ?", (pk, sk)).fetchone()
+        return json.loads(row[0]) if row else None
+
+    def query(self, pk, newest_first=False, limit=None):
+        sql = f"SELECT sk, data FROM items WHERE pk = ? ORDER BY sk {'DESC' if newest_first else 'ASC'}"
+        if limit:
+            sql += f" LIMIT {int(limit)}"
+        with self._lock:
+            rows = self.db.execute(sql, (pk,)).fetchall()
+        return [{"sk": sk, **json.loads(data)} for sk, data in rows]
+
+    def delete(self, pk, sk):
+        with self._lock:
+            self.db.execute("DELETE FROM items WHERE pk = ? AND sk = ?", (pk, sk))
+            self.db.commit()
+
+
 class DynamoStore:
     def __init__(self, table_name: str):
         import boto3
@@ -89,8 +128,8 @@ _store = None
 def get_store():
     global _store
     if _store is None:
-        table = os.environ.get("TABLE_NAME")
-        _store = DynamoStore(table) if table else MemoryStore()
+        table, local_db = os.environ.get("TABLE_NAME"), os.environ.get("LOCAL_DB")
+        _store = DynamoStore(table) if table else SqliteStore(local_db) if local_db else MemoryStore()
     return _store
 
 

@@ -7,3 +7,4 @@ samconfig.toml
 build/
 .cache/
 *.bundle
+taap.db
