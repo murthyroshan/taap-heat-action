@@ -86,7 +86,7 @@ def test_api_routes(monkeypatch):
     _live(st)
     assert api.route("GET", "/", {}, {}, st)["headers"]["Content-Type"].startswith("text/html")
     cities = json.loads(api.route("GET", "/api/cities", {}, {}, st)["body"])
-    assert {c["id"] for c in cities["cities"]} == {"delhi", "ahmedabad"}
+    assert {"delhi", "ahmedabad", "mumbai", "hyderabad", "chennai", "kolkata", "jaipur"} <= {c["id"] for c in cities["cities"]}
     assert "<alert" in api.route("GET", "/cap.xml", {"city": "delhi"}, {}, st)["body"]
     assert "गर्मी सूचना" in api.route("GET", "/poster", {"city": "delhi", "zone": "okhla"}, {}, st)["body"]
     assert api.route("POST", "/api/replay", {}, {"city": "delhi"}, st)["statusCode"] == 403
@@ -308,3 +308,80 @@ def test_officer_web_console_and_ledger(monkeypatch):
     st.put(f"REP#delhi#{engine.today_ist()}", "120000#5", {"type": "water", "zone_name": "Narela", "status": "open"})
     res = api.route("POST", "/api/officer/resolve", {}, {"code": "heat2026", "city": "delhi", "date": engine.today_ist(), "sk": "120000#5"}, st)
     assert json.loads(res["body"])["report"]["status"] == "resolved"
+
+
+def test_nearby_help_with_walk_times_and_official_places(monkeypatch):
+    from heatplan import places
+    monkeypatch.setenv("OFFICER_CODE", "heat2026")
+    st = store.MemoryStore()
+    _live(st)
+    fake = ({"k": "water", "n": "Tap A", "s": "drinking_water", "lat": 28.8540, "lon": 77.0935},
+            {"k": "water", "n": "Tap far", "s": "drinking_water", "lat": 28.90, "lon": 77.20},
+            {"k": "health", "n": "Clinic", "s": "clinic", "lat": 28.86, "lon": 77.10})
+    monkeypatch.setattr(places, "bundled", lambda c: fake)
+    res = json.loads(api.route("GET", "/api/nearby", {"city": "delhi", "lat": "28.853", "lon": "77.093"}, {}, st)["body"])
+    water = res["places"]["water"]
+    assert res["zone"]["id"] == "narela" and res["from"] == "you"
+    assert water[0]["n"] == "Tap A" and water[0]["walk_min"] <= 2 and not water[0]["too_far"]
+    assert water[1]["too_far"] and "google.com/maps/dir" in water[1]["directions"]
+    # an officer opens a cooling centre and drops its location -> it shows up for workers
+    act = next(a for a in store.list_actions(st, "delhi", "live", engine.today_ist()) if a["action_id"] == "cool" and a["zone"] == "narela")
+    api.route("POST", "/api/officer/done", {}, {"code": "heat2026", "city": "delhi", "mode": "live", "date": engine.today_ist(),
+              "zone": "narela", "action_id": "cool", "name": "DM North", "lat": 28.8545, "lon": 77.094, "label": "Narela community hall"}, st)
+    res = json.loads(api.route("GET", "/api/nearby", {"city": "delhi", "zone": "narela"}, {}, st)["body"])
+    assert res["places"]["cool"][0]["official"] and res["places"]["cool"][0]["n"] == "Narela community hall"
+
+
+def test_shift_planner_fits_work_into_safe_hours():
+    st = store.MemoryStore()
+    _live(st)
+    res = json.loads(api.route("GET", "/api/shift", {"city": "delhi", "zone": "narela", "hours": "6"}, {}, st)["body"])
+    assert res["start"] and res["rows"] and res["rights"]["hi"]
+    assert sum(r["work"] for r in res["rows"]) == 360 or not res["feasible"]
+    assert all(r["work"] <= r["cap"] for r in res["rows"])
+    assert res["planned_hot_minutes"] <= res["usual_hot_hours"] * 60
+    new = json.loads(api.route("GET", "/api/shift", {"city": "delhi", "zone": "narela", "hours": "6", "new": "1"}, {}, st)["body"])
+    assert new["safe_capacity_hours"] <= res["safe_capacity_hours"]
+
+
+def test_saathi_emergency_never_uses_the_model_and_files_a_report():
+    from heatplan import saathi
+    st = store.MemoryStore()
+    _live(st)
+    res = saathi.reply(st, "मेरा साथी बेहोश हो गया", "delhi", "narela", "hi", use_model=True)
+    assert res["emergency"] and res["engine"] == "triage" and "112" in res["reply"]
+    assert res["cards"][0]["type"] == "emergency"
+    assert store.list_reports(st, "delhi", engine.today_ist())[0]["type"] == "ill"
+
+
+def test_saathi_fallback_answers_and_acts():
+    from heatplan import saathi
+    st = store.MemoryStore()
+    _live(st)
+    r = saathi.reply(st, "आज कब काम करूँ?", "delhi", "narela", "hi", use_model=False)
+    assert r["engine"] == "fallback" and r["cards"][0]["type"] == "shift" and "बजे" not in r["reply"][:0]
+    r = saathi.reply(st, "site par paani nahi hai, no water here", "delhi", "narela", "en", use_model=False, chat_id="c1")
+    assert r["cards"][0]["type"] == "report" and "Sent to" in r["reply"]
+    again = saathi.reply(st, "no water here", "delhi", "narela", "en", use_model=False, chat_id="c1")
+    assert "already" in again["reply"]
+    warn = saathi.reply(st, "I feel dizzy", "delhi", "narela", "en", use_model=False)
+    assert warn["cards"][0]["type"] == "warning" and "Stop work" in warn["reply"]
+    risk = saathi.reply(st, "how hot is it today", "delhi", "narela", "en", use_model=False)
+    assert risk["cards"][0]["type"] == "risk"
+
+
+def test_saathi_endpoint_falls_back_when_agent_breaks(monkeypatch):
+    from heatplan import saathi
+    st = store.MemoryStore()
+    _live(st)
+    monkeypatch.setattr(saathi, "_agent_reply", lambda s, t: (_ for _ in ()).throw(RuntimeError("no model")))
+    res = api.route("POST", "/api/saathi", {}, {"text": "where is water", "city": "delhi", "zone": "narela", "lang": "en"}, st, agent=lambda q, c: "x")
+    body = json.loads(res["body"])
+    assert res["statusCode"] == 200 and body["engine"] == "fallback" and body["cards"][0]["type"] == "places"
+
+
+def test_shift_planner_avoids_hot_hours_when_cool_ones_suffice():
+    from heatplan import shift
+    hourly = [{"hour": h, "band": 3 if 12 <= h < 15 else 0, "wbgt": 29.5 if 12 <= h < 15 else 22} for h in range(24)]
+    res = shift.plan_shift({"available": True, "hourly": hourly, "band": 3}, 8)
+    assert res["feasible"] and res["planned_hot_minutes"] == 0 and res["usual_hot_hours"] == 3

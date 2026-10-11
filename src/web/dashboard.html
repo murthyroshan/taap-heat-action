@@ -21,7 +21,7 @@
 <nav>
   <a class="brand" data-href="/"><div class="logo"><span>🔥</span></div>Taap</a>
   <button class="ctl menu" id="menuBtn" aria-label="Menu">☰</button>
-  <div class="links" id="links"><a data-href="/">Home</a><a data-href="/dashboard" class="on">Dashboard</a><a data-href="/replay">2024 Replay</a><a data-href="/workers">Workers</a><a data-href="/officers">Officers</a><a data-href="/ledger">Ledger</a><a data-href="/plans">Plans</a><a data-href="/method">Method</a></div>
+  <div class="links" id="links"><a data-href="/">Home</a><a data-href="/dashboard" class="on">Dashboard</a><a data-href="/replay">2024 Replay</a><a data-href="/workers">Workers</a><a data-href="/saathi">🎙️ Saathi</a><a data-href="/officers">Officers</a><a data-href="/planner">Shift planner</a><a data-href="/ledger">Ledger</a><a data-href="/plans">Plans</a><a data-href="/method">Method</a></div>
   <div class="controls">
     <select id="city" class="ctl" aria-label="City"></select>
     <div class="seg" role="tablist" id="seg"><span class="pill-bg"></span><button id="mLive" class="on">Live</button><button id="mReplay">Replay</button></div>
@@ -38,7 +38,7 @@
     <h1 class="reveal" style="--d:.08s"><span id="heroCity">Delhi</span>'s Heat Action Plan,<br><span class="swap" id="swap"><span class="heat-text">running.</span></span></h1>
     <p class="lede reveal" style="--d:.16s">Humidity-aware heat stress for every zone. Work–rest instructions to outdoor workers in Hindi. Every plan action sent to a named officer — and a public record of what actually happened.</p>
     <div class="status reveal" style="--d:.24s" id="heroStatus"><span class="chip"><span class="skel" style="width:160px;margin:0"></span></span></div>
-    <div class="cta reveal" style="--d:.32s"><a class="primary" href="#ops" style="text-decoration:none">See today's plan ↓</a><a class="ghost" href="#how">How it works</a></div>
+    <div class="cta reveal" style="--d:.32s"><a class="primary" href="#ops" style="text-decoration:none">See today's plan ↓</a><a class="ghost" data-href="/method">How it works</a></div>
   </div>
   <div class="orb-wrap reveal" style="--d:.2s">
     <div class="glow haze"></div>
@@ -87,22 +87,6 @@
     <form id="askForm" class="askrow"><input id="q" maxlength="500" placeholder="Which zones still have open actions?" autocomplete="off"><button class="primary">Ask</button></form>
     <div class="suggest" id="suggest"></div>
     <p class="note" style="margin:10px 0 0">Strands Agents · read-only tools over the plan, live risk, actions and reports</p>
-  </section>
-
-  <div class="section-title reveal" id="how"><h2>How it works</h2><p>From a forecast to a worker resting in the shade — every hour.</p></div>
-  <section class="steps">
-    <div class="card step flip reveal" style="--d:0.00s" tabindex="0"><div class="in3d">
-      <div class="face front" data-n="1"><div class="em">🌡️</div><h4>Measure what bodies feel</h4><p>Hourly WBGT per zone from temperature, humidity, wind and sun — not just the day's maximum.</p><span class="hint">hover ↻</span></div>
-      <div class="face back"><b class="heat-text">4 inputs</b><p style="margin:8px 0 0;color:var(--ink)">temperature · humidity · wind · sun → one number the body feels, every hour, every zone.</p></div></div></div>
-    <div class="card step flip reveal" style="--d:0.08s" tabindex="0"><div class="in3d">
-      <div class="face front" data-n="2"><div class="em">🗣️</div><h4>Tell workers, in Hindi</h4><p>Work–rest schedules by Telegram text and voice. Posters for labour chowks reach people without phones.</p><span class="hint">hover ↻</span></div>
-      <div class="face back"><b class="heat-text">2 taps</b><p style="margin:8px 0 0;color:var(--ink)">to subscribe. Then a Hindi alert says exactly when to rest: “30 min work, 30 min rest, 12–4 PM”.</p></div></div></div>
-    <div class="card step flip reveal" style="--d:0.16s" tabindex="0"><div class="in3d">
-      <div class="face front" data-n="3"><div class="em">📋</div><h4>Task named officers</h4><p>Each plan action goes to the responsible department with a Done button. Workers can report back.</p><span class="hint">hover ↻</span></div>
-      <div class="face back"><b class="heat-text">1 button</b><p style="margin:8px 0 0;color:var(--ink)">per action. Water, shade, work breaks, hospitals — each owned by a named department.</p></div></div></div>
-    <div class="card step flip reveal" style="--d:0.24s" tabindex="0"><div class="in3d">
-      <div class="face front" data-n="4"><div class="em">🔎</div><h4>Prove it ran</h4><p>A public log of planned vs done, a CAP feed for alert systems, and a backtest on real heatwaves.</p><span class="hint">hover ↻</span></div>
-      <div class="face back"><b class="heat-text">100% public</b><p style="margin:8px 0 0;color:var(--ink)">Planned vs done, who and when — plus a CAP 1.2 feed India's SACHET system can ingest.</p></div></div></div>
   </section>
 
   <div class="section-title reveal"><h2>Backtest</h2><p>What the plan's rules would have triggered in a real heatwave.</p></div>
@@ -335,7 +319,7 @@ async function loadBacktest(){
     const n = (k, label) => `<div><b data-n="${s[k]??''}">–</b><span>${label}</span></div>`;
     $('#bt').innerHTML = `<p style="margin:0">Replaying <b>${b.window.start} → ${b.window.end}</b> through the plan. ${esc(b.reference_event.text||'')}</p>
       <div class="nums">
-        <div><b style="font-size:20px">${s.first_worker_warning||'–'}</b><span>first worker warning (band ≥3)${s.lead_days_before_reference!=null?` · ${s.lead_days_before_reference} days before the reference peak`:''}${s.warning_from_window_start?' (already active at window start)':''}</span></div>
+        ${n('days_plan_active','days the plan would have been active')}
         ${n('days_with_band3_plus','days needing work–rest limits')}${n('zone_days_band3_plus','zone-days of band ≥3 alerts')}${n('days_orange_or_red','days at orange/red tier')}${n('hot_night_zone_days','zone-days raised by hot nights')}${n('actions_triggered','plan actions that would have been assigned')}
       </div>
       <div class="bt" id="btbars">${b.days.map((d,i) => `<div class="${d.date===b.reference_event.date?'ref':''}" title="${d.date}: Tmax ${d.tmax}°C · WBGT ${d.peak_wbgt}°C · band ${d.max_band} · ${d.tier}" style="--i:${i};height:${15+85*(d.tmax-minT)/Math.max(1,maxT-minT)}%;background:linear-gradient(180deg,${bc[d.max_band]},color-mix(in srgb,${bc[d.max_band]} 40%,transparent))"></div>`).join('')}</div>

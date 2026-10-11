@@ -223,7 +223,7 @@ main{max-width:1320px;margin:0 auto;padding:0 clamp(16px,3vw,32px) 60px;display:
 pre{max-height:320px;overflow:auto;background:var(--bg2);padding:12px;border-radius:12px;border:1px solid var(--line);font:12.5px/1.5 "JetBrains Mono",monospace}
 .skel{height:14px;border-radius:7px;background:linear-gradient(90deg,var(--line) 0,var(--line2) 40%,var(--line) 80%);background-size:200% 100%;animation:sk 1.3s infinite;margin:8px 0}
 @keyframes sk{to{background-position:-200% 0}}
-.toasts{position:fixed;right:16px;bottom:16px;z-index:2000;display:flex;flex-direction:column;gap:8px;max-width:min(380px,calc(100vw - 32px))}
+.toasts{position:fixed;right:16px;bottom:80px;z-index:2000;display:flex;flex-direction:column;gap:8px;max-width:min(380px,calc(100vw - 32px))}
 .toast{padding:12px 16px;border-radius:14px;background:var(--card-solid);border:1px solid var(--line2);box-shadow:var(--shadow);animation:pop .3s var(--ease) both;font-size:14px}
 .toast.bad{border-color:rgba(255,59,48,.6)}.toast.good{border-color:rgba(52,199,89,.6)}
 footer{max-width:1320px;margin:0 auto;padding:0 clamp(16px,3vw,32px) 40px}
@@ -311,3 +311,9 @@ table.t th{color:var(--muted);font-weight:600;font-size:12.5px;text-transform:up
 .kpi-mini span{font-size:12.5px;color:var(--muted)}
 .dept-bar{height:10px;border-radius:10px;background:var(--line);overflow:hidden;margin-top:6px}
 .dept-bar i{display:block;height:100%;border-radius:10px;width:0;transition:width 1.2s var(--ease)}
+
+.fab{position:fixed;right:16px;bottom:16px;z-index:1500;display:inline-flex;align-items:center;gap:8px;padding:12px 16px;border-radius:99px;color:#fff;text-decoration:none;font-size:15px;
+  background:linear-gradient(135deg,var(--ember),var(--ember3));box-shadow:0 14px 34px -10px var(--glow);transition:transform .2s var(--ease)}
+.fab:hover{transform:translateY(-2px) scale(1.04)}
+.fab-dot{width:9px;height:9px;border-radius:50%;background:#fff;animation:ping 1.8s infinite}
+@media print{.fab,nav,.dock,#toasts{display:none!important}}

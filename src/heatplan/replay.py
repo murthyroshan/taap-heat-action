@@ -43,7 +43,7 @@ def archive_series(st, city_id: str) -> dict:
 
 def backtest(st, city_id: str) -> dict:
     city = load_city(city_id)
-    key = f"backtest2#{city_id}"
+    key = f"backtest3#{city_id}"
     cached = st.get("CACHE", key)
     if cached:
         return cached
@@ -86,6 +86,7 @@ def backtest(st, city_id: str) -> dict:
             "warning_from_window_start": first_band3 == win["start"],
             "days_with_band3_plus": sum(1 for d in days if d["max_band"] >= 3),
             "zone_days_band3_plus": sum(d["zones_band3"] for d in days),
+            "days_plan_active": sum(1 for d in days if d["tier"] != "green"),
             "days_orange_or_red": sum(1 for d in days if TIERS.index(d["tier"]) >= TIERS.index("orange")),
             "hot_night_zone_days": sum(d["hot_night_zones"] for d in days),
             "actions_triggered": sum(d["actions"] for d in days),

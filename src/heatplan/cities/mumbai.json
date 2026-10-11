@@ -1,0 +1,148 @@
+{
+  "id": "mumbai",
+  "name": "Mumbai",
+  "name_hi": "मुंबई",
+  "plan_name": "Mumbai heat plan (illustrative, NDMA-based)",
+  "timezone": "Asia/Kolkata",
+  "notes": [
+    "Illustrative configuration built from NDMA heatwave guidelines and IMD criteria; replace thresholds and duties with the city's own Heat Action Plan (Plans -> import PDF).",
+    "Coastal city: thresholds use IMD's coastal heatwave criterion (max >= 37 C) and are illustrative.",
+    "Zones are named localities ~8-12 km apart, matching the ~9 km resolution of the forecast models. They are not municipal wards.",
+    "The hot-night threshold is illustrative and should be set by the city.",
+    "To avoid alert fatigue, departments are tasked only once the plan is active (yellow tier or above); workers get a WBGT push alert from band 2 on any day.",
+    "Worker messages are Hindi and English for now; local-language messages (Tamil / Bengali / Telugu / Marathi) are on the roadmap."
+  ],
+  "tiers": {
+    "yellow": 37.0,
+    "orange": 40.0,
+    "red": 42.0
+  },
+  "hot_night_c": 29.0,
+  "zones": [
+    {
+      "id": "colaba",
+      "name": "Colaba",
+      "name_hi": "कोलाबा",
+      "lat": 18.906,
+      "lon": 72.815
+    },
+    {
+      "id": "dadar",
+      "name": "Dadar",
+      "name_hi": "दादर",
+      "lat": 19.018,
+      "lon": 72.844
+    },
+    {
+      "id": "bandra",
+      "name": "Bandra",
+      "name_hi": "बांद्रा",
+      "lat": 19.06,
+      "lon": 72.836
+    },
+    {
+      "id": "kurla",
+      "name": "Kurla",
+      "name_hi": "कुर्ला",
+      "lat": 19.072,
+      "lon": 72.88
+    },
+    {
+      "id": "andheri",
+      "name": "Andheri",
+      "name_hi": "अंधेरी",
+      "lat": 19.119,
+      "lon": 72.847
+    },
+    {
+      "id": "borivali",
+      "name": "Borivali",
+      "name_hi": "बोरीवली",
+      "lat": 19.231,
+      "lon": 72.857
+    },
+    {
+      "id": "mulund",
+      "name": "Mulund",
+      "name_hi": "मुलुंड",
+      "lat": 19.172,
+      "lon": 72.956
+    },
+    {
+      "id": "vashi",
+      "name": "Vashi (Navi Mumbai)",
+      "name_hi": "वाशी",
+      "lat": 19.077,
+      "lon": 72.998
+    }
+  ],
+  "roles": {
+    "water": "Water supply (BMC)",
+    "health": "Health department (BMC)",
+    "labour": "Labour department",
+    "disaster": "Disaster management (BMC)"
+  },
+  "actions": [
+    {
+      "id": "water",
+      "role": "water",
+      "when": {
+        "band": 3
+      },
+      "text": "Set up drinking-water points at labour nakas, markets and construction sites in {zone}, {start}-{end}.",
+      "ref": "NDMA heatwave guidelines: drinking water at worksites and public places"
+    },
+    {
+      "id": "break",
+      "role": "labour",
+      "when": {
+        "band": 4
+      },
+      "text": "Ask contractors in {zone} to stop heavy outdoor work during {start}-{end} and reschedule to cooler hours.",
+      "ref": "NDMA heatwave guidelines: rescheduling outdoor work"
+    },
+    {
+      "id": "cool",
+      "role": "disaster",
+      "when": {
+        "tier": "orange"
+      },
+      "text": "Open cooling shelters / shaded rest areas in {zone}, {start}-{end}, and publish their locations.",
+      "ref": "NDMA heatwave guidelines: cooling shelters"
+    },
+    {
+      "id": "hosp",
+      "role": "health",
+      "when": {
+        "tier": "orange"
+      },
+      "text": "Alert hospitals and health centres serving {zone}; stock ORS, ice packs and IV fluids before {start}.",
+      "ref": "NDMA heatwave guidelines: health facility preparedness"
+    },
+    {
+      "id": "mobile",
+      "role": "disaster",
+      "when": {
+        "tier": "red"
+      },
+      "text": "Deploy mobile medical / heat-relief teams to hotspots in {zone}, {start}-{end}.",
+      "ref": "NDMA heatwave guidelines: emergency response on red alert"
+    }
+  ],
+  "reference_event": {
+    "date": "2023-04-16",
+    "text": "Kharghar, Navi Mumbai, 16 April 2023: heatstroke deaths at a large outdoor public event. Check official figures before quoting numbers.",
+    "source": "https://mausam.imd.gov.in/"
+  },
+  "replay": {
+    "start": "2023-04-01",
+    "end": "2023-05-15",
+    "default": "2023-04-16"
+  },
+  "alert_min_band": 2,
+  "actions_min_tier": "yellow",
+  "rights": {
+    "en": "NDMA heatwave guidelines ask employers to move heavy outdoor work to cooler hours and provide water, shade and rest. Ask your contractor for these.",
+    "hi": "NDMA दिशानिर्देश: भारी बाहरी काम ठंडे घंटों में करवाया जाए और पानी, छाँव व आराम दिया जाए। अपने ठेकेदार से यह माँगें।"
+  }
+}

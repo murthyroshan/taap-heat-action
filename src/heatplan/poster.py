@@ -31,6 +31,8 @@ def build(snap: dict, zone_id: str) -> str:
                     ("भारी काम बंद" if zr["band"] >= 4 else f"हर घंटे {b['work']} मिनट काम, {b['rest']} मिनट छाँव में आराम"))
     else:
         headline = "आज गर्मी का खतरा कम है। पानी पीते रहें।"
+    ext = ""
+    city_id, zone_key = snap["city"], zone_id
     return f"""<!doctype html><html lang="hi"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>गर्मी सूचना — {escape(zone['name_hi'])}</title>
@@ -48,11 +50,22 @@ def build(snap: dict, zone_id: str) -> str:
 <button class=noprint onclick="print()">🖨️ Print</button>
 <h1>🔥 गर्मी सूचना</h1>
 <h2>{escape(zone['name_hi'])} · {escape(city['name_hi'])} · {escape(messages.date_label(snap['date'], 'hi'))}</h2>
-<div class=band>{escape(b['label_hi'])} — {escape(headline)}</div>
+<div class=band>{escape(b['label_hi'].split(':')[0])} — {escape(headline)}</div>
 <table>{''.join(rows)}</table>
 <div class=rules>💧 हर 15–20 मिनट पानी पिएँ, प्यास न लगे तब भी।<br>
 ⛱️ आराम छाँव में करें। सिर ढककर रखें।<br>
 👀 साथी पर नज़र रखें: चक्कर, उल्टी, भ्रम, बहुत तेज़ सिरदर्द = खतरा।</div>
-<p class=sos>🚨 आपात स्थिति: 112</p>
+<div style="display:flex;gap:18px;align-items:center;justify-content:space-between;flex-wrap:wrap">
+<p class=sos style="margin:0">🚨 आपात स्थिति: 112</p>
+<div style="display:flex;gap:12px;align-items:center"><div id=qr></div><div style="font-size:18px;font-weight:700;max-width:220px">📱 स्कैन करें: हर घंटे की जानकारी, आवाज़ में सुनें</div></div></div>
 <div class=foot>Heavy-work guidance from hourly WBGT (peak {zr['peak_wbgt']}°C), ACGIH TLV screening values. {escape(city['plan_name'])} tier: {zr['tier']}. Weather: Open-Meteo (CC-BY 4.0), modelled. Not medical advice.{' REPLAY / EXERCISE.' if snap.get('mode') == 'replay' else ''}</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+(function(){{
+  var q = "workers{ext}?city={city_id}&zone={zone_key}";
+  var url = location.pathname.indexOf("/posters/") >= 0 ? new URL("../" + q.replace("workers?", "workers.html?"), location.href).href
+                                                           : new URL("/workers?city={city_id}&zone={zone_key}", location.href).href;
+  if (window.QRCode) new QRCode(document.getElementById("qr"), {{text: url, width: 130, height: 130}});
+}})();
+</script>
 </body></html>"""

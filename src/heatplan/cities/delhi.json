@@ -180,5 +180,9 @@
     "default": "2024-05-28"
   },
   "alert_min_band": 2,
-  "actions_min_tier": "yellow"
+  "actions_min_tier": "yellow",
+  "rights": {
+    "en": "Delhi LG order (29 May 2024): paid break from 12 to 3 PM at construction sites during the heatwave. Rest time must not cut your pay.",
+    "hi": "दिल्ली एलजी आदेश (29 मई 2024): लू के दौरान निर्माण स्थलों पर दोपहर 12 से 3 बजे तक सवेतन आराम। आराम के समय की मज़दूरी नहीं कटनी चाहिए।"
+  }
 }

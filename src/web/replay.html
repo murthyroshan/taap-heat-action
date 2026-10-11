@@ -84,7 +84,7 @@ function summary(){
   T.$('#summary').innerHTML = `<h3>Across the whole replay</h3><div class="kpi-mini">
     <div><b>${s.days_with_band3_plus}</b><span>days needing work–rest limits</span></div><div><b>${s.zone_days_band3_plus}</b><span>zone-days of worker alerts</span></div>
     <div><b>${s.days_orange_or_red}</b><span>days at orange/red tier</span></div><div><b>${s.hot_night_zone_days}</b><span>zone-days escalated by hot nights</span></div>
-    <div><b>${s.actions_triggered}</b><span>department actions assigned</span></div><div><b>${s.first_worker_warning||'–'}</b><span>first worker warning</span></div></div>`;
+    <div><b>${s.actions_triggered}</b><span>department actions assigned</span></div><div><b>${s.days_plan_active}</b><span>days the plan would have been active</span></div></div>`;
   T.$('#caveat').textContent = B.caveat;
 }
 function play(){

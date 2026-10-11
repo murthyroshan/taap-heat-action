@@ -8,6 +8,7 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E🔥%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@500;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link rel="stylesheet" href="assets/app.css">
 <style>
 .wk{max-width:760px;margin:0 auto;padding:24px 16px 60px;display:grid;gap:18px}
@@ -26,6 +27,15 @@
 .sos{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px;border-radius:18px;border:2px solid #ff3b30;background:rgba(255,59,48,.08)}
 .sos b{font-size:40px;color:#ff3b30;letter-spacing:-.03em}
 .msg{white-space:pre-wrap;font-size:15.5px;line-height:1.6}
+.help{display:grid;gap:8px}
+.help a.row{display:grid;grid-template-columns:34px 1fr auto;gap:10px;align-items:center;padding:10px 12px;border-radius:14px;background:var(--bg2);border:1px solid var(--line);text-decoration:none;color:var(--ink)}
+.help a.row.far{opacity:.6}
+.help .ic{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:var(--card)}
+.help .min{font-weight:800;font-size:18px;text-align:right}.help .min small{display:block;font-size:11px;color:var(--muted);font-weight:600}
+.badge{font-size:11px;font-weight:800;padding:2px 7px;border-radius:99px;background:rgba(52,199,89,.18);color:var(--b0)}
+#hmap{height:230px;border-radius:14px;margin-bottom:10px}
+.toggle{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:14px;border:1px solid var(--line2);background:var(--card);cursor:pointer;font-weight:700}
+.toggle input{width:20px;height:20px;accent-color:var(--ember)}
 .speaking{animation:pulseBtn 1s ease-in-out infinite}
 @keyframes pulseBtn{50%{filter:brightness(1.25);transform:scale(1.02)}}
 </style>
@@ -38,6 +48,7 @@
     <div class="lang" role="group" aria-label="Language"><button data-l="hi" class="on">हिंदी</button><button data-l="en">English</button></div>
     <select id="zone" class="ctl" aria-label="Zone"></select>
   </div>
+  <label class="toggle reveal"><input type="checkbox" id="newW"><span data-t="newq">नया काम? (2 हफ़्ते से कम) — ज़्यादा सावधानी वाली सीमा</span></label>
   <div class="status-card reveal" id="card"><div class="skel"></div><div class="skel" style="width:60%"></div></div>
   <div class="actions reveal">
     <button class="speak" id="speak">🔊 <span data-t="listen">सुनें</span></button>
@@ -45,20 +56,45 @@
     <a id="poster" target="_blank">🖨️ <span data-t="poster">पोस्टर</span></a>
     <a id="bot" target="_blank" rel="noopener" hidden>✈️ <span data-t="bot">रोज़ अलर्ट पाएँ</span></a>
   </div>
+  <section class="card reveal"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><h3 data-t="help" style="margin:0">पास में पानी, छाँव और इलाज</h3><button class="ghost" id="locate">📍 <span data-t="me">मेरी जगह</span></button></div>
+    <p class="note" id="helpNote" style="margin:6px 0 10px"></p><div id="hmap"></div><div class="help" id="help"></div>
+    <p class="note" style="margin:10px 0 0">© OpenStreetMap contributors · <span data-t="official">✅ = अधिकारी द्वारा आज खोला गया</span></p></section>
+  <a class="card reveal" id="plannerLink" style="display:block;text-decoration:none;color:var(--ink)"><b data-t="employer">ठेकेदार / सुपरवाइज़र? सुरक्षित शिफ्ट बनाएँ →</b><div class="note" data-t="employer2">आज का काम ठंडे घंटों में कैसे पूरा करें</div></a>
   <section class="card reveal"><h3 data-t="today">आज, घंटे के हिसाब से</h3><div id="hours"></div></section>
   <section class="card reveal"><h3 data-t="full">पूरा संदेश</h3><div class="msg" id="msg"></div></section>
   <div class="sos reveal"><div><div style="font-weight:800" data-t="sos">चक्कर, उल्टी, भ्रम या बेहोशी?</div><div class="note" data-t="sos2">छाँव में ले जाएँ, ठंडा पानी डालें, और तुरंत कॉल करें</div></div><b>112</b></div>
   <p class="note" data-t="note">भारी काम के लिए मार्गदर्शन (WBGT, ACGIH सीमाएँ)। चिकित्सा सलाह नहीं।</p>
 </div>
 <footer id="foot"></footer>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="assets/core.js"></script>
 <script>
-const L = {
-  hi:{listen:'सुनें',share:'WhatsApp पर भेजें',poster:'पोस्टर',bot:'रोज़ अलर्ट पाएँ',today:'आज, घंटे के हिसाब से',full:'पूरा संदेश',sos:'चक्कर, उल्टी, भ्रम या बेहोशी?',sos2:'छाँव में ले जाएँ, ठंडा पानी डालें, और तुरंत कॉल करें',note:'भारी काम के लिए मार्गदर्शन (WBGT, ACGIH सीमाएँ)। चिकित्सा सलाह नहीं।',normal:'सामान्य काम',stop:'भारी काम बंद',work:'मिनट काम',rest:'मिनट आराम',nodata:'अभी जानकारी उपलब्ध नहीं।',low:'आज गर्मी का खतरा कम है',stopnow:'भारी काम बंद रखें'},
-  en:{listen:'Listen',share:'Share on WhatsApp',poster:'Poster',bot:'Daily alerts',today:'Today, hour by hour',full:'Full message',sos:'Dizzy, vomiting, confused or fainting?',sos2:'Move to shade, pour cool water, and call now',note:'Guidance for heavy work (WBGT, ACGIH limits). Not medical advice.',normal:'Normal work',stop:'Stop heavy work',work:'min work',rest:'min rest',nodata:'No data yet.',low:'Low heat risk today',stopnow:'Stop heavy work'},
+const TXT = {
+  hi:{listen:'सुनें',share:'WhatsApp पर भेजें',poster:'पोस्टर',bot:'रोज़ अलर्ट पाएँ',today:'आज, घंटे के हिसाब से',full:'पूरा संदेश',sos:'चक्कर, उल्टी, भ्रम या बेहोशी?',sos2:'छाँव में ले जाएँ, ठंडा पानी डालें, और तुरंत कॉल करें',note:'भारी काम के लिए मार्गदर्शन (WBGT, ACGIH सीमाएँ)। चिकित्सा सलाह नहीं।',normal:'सामान्य काम',stop:'भारी काम बंद',newq:'नया काम? (2 हफ़्ते से कम) — ज़्यादा सावधानी वाली सीमा',help:'पास में पानी, छाँव और इलाज',me:'मेरी जगह',official:'✅ = अधिकारी द्वारा आज खोला गया',employer:'ठेकेदार / सुपरवाइज़र? सुरक्षित शिफ्ट बनाएँ →',employer2:'आज का काम ठंडे घंटों में कैसे पूरा करें',water:'पानी',cool:'छाँव / ठंडी जगह',health:'इलाज',walk:'मिनट पैदल',far:'इस गर्मी में {n} मिनट से ज़्यादा पैदल न चलें — पहले पास की छाँव लें।',from_you:'आपकी जगह से',from_zone:'इलाके के बीच से',nohelp:'पास में कुछ नहीं मिला',work:'मिनट काम',rest:'मिनट आराम',nodata:'अभी जानकारी उपलब्ध नहीं।',low:'आज गर्मी का खतरा कम है',stopnow:'भारी काम बंद रखें'},
+  en:{listen:'Listen',share:'Share on WhatsApp',poster:'Poster',bot:'Daily alerts',today:'Today, hour by hour',full:'Full message',sos:'Dizzy, vomiting, confused or fainting?',sos2:'Move to shade, pour cool water, and call now',note:'Guidance for heavy work (WBGT, ACGIH limits). Not medical advice.',normal:'Normal work',stop:'Stop heavy work',newq:'New to this work (under 2 weeks)? Use stricter limits',help:'Water, shade and care nearby',me:'My location',official:'✅ = opened today by an officer',employer:'Contractor or supervisor? Plan a safe shift →',employer2:'Fit today\'s work into the cooler hours',water:'Water',cool:'Shade / cool place',health:'Care',walk:'min walk',far:'In this heat, don\'t walk more than {n} min — find nearer shade first.',from_you:'from your location',from_zone:'from the zone centre',nohelp:'Nothing found nearby',work:'min work',rest:'min rest',nodata:'No data yet.',low:'Low heat risk today',stopnow:'Stop heavy work'},
 };
-let lang = T.store.get('taap.lang') || 'hi', data = null, meta = {};
-const t = k => L[lang][k];
+let lang = T.store.get('taap.lang') || 'hi', data = null, meta = {}, here = null, hmap, hlayer;
+const isNew = () => T.$('#newW').checked;
+const KIND_IC = {water:'💧', cool:'⛱️', health:'🏥'};
+async function loadHelp(){
+  const c = T.cities[T.city()], zone = T.$('#zone').value;
+  const q = here ? `lat=${here[0]}&lon=${here[1]}` : `zone=${zone}`;
+  let r; try{ r = await T.api(`/api/nearby?city=${c.id}&${q}${isNew()?'&new=1':''}`.replace('&new=1', T.STATIC ? '' : '&new=1')); }catch(e){ T.$('#help').innerHTML = `<div class="empty">${T.esc(e.message)}</div>`; return; }
+  T.$('#helpNote').textContent = `${here ? t('from_you') : t('from_zone')} · ` + t('far').replace('{n}', r.max_walk_min);
+  const rows = [];
+  ['water','cool','health'].forEach(k => (r.places[k]||[]).forEach(p => rows.push({...p, kind:k})));
+  T.$('#help').innerHTML = rows.length ? rows.map(p => `<a class="row${p.too_far?' far':''}" href="${p.directions}" target="_blank" rel="noopener"><span class="ic">${KIND_IC[p.kind]}</span>
+      <span><b>${T.esc(p.n)}</b> ${p.official?'<span class="badge">✅</span>':''}<div class="note">${t(p.kind)} · ${(p.dist_m/1000).toFixed(1)} km${p.too_far?' · ⚠️':''}</div></span>
+      <span class="min">${p.walk_min}<small>${t('walk')}</small></span></a>`).join('') : `<div class="empty">${t('nohelp')}</div>`;
+  if(!hmap){ hmap = L.map('hmap', {zoomControl:false, attributionControl:false}); L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:18, className:'tiles'}).addTo(hmap); hlayer = L.layerGroup().addTo(hmap); }
+  hlayer.clearLayers();
+  const me = here || [r.zone.lat, r.zone.lon];
+  L.circleMarker(me, {radius:8, color:'#fff', weight:3, fillColor:'#ff6a1a', fillOpacity:1}).addTo(hlayer);
+  L.circle(me, {radius:r.max_walk_min*70, color:'#ff6a1a', weight:1, fillOpacity:.06, dashArray:'4 4'}).addTo(hlayer);
+  rows.forEach(p => L.marker([p.lat, p.lon], {icon:L.divIcon({className:'', html:`<div style="font-size:20px">${KIND_IC[p.kind]}</div>`, iconSize:[22,22]})}).addTo(hlayer));
+  hmap.fitBounds(L.latLngBounds([me, ...rows.map(p => [p.lat, p.lon])]).pad(0.2));
+}
+const t = k => TXT[lang][k];
 function applyLang(){
   document.documentElement.lang = lang; document.body.classList.toggle('hi', lang==='hi');
   T.$$('.lang button').forEach(b => b.classList.toggle('on', b.dataset.l===lang));
@@ -71,8 +107,9 @@ function fillZones(){
 }
 async function load(){
   const c = T.cities[T.city()], zone = T.$('#zone').value; T.store.set('taap.zone.'+c.id, zone);
-  try{ data = await T.api(`/api/worker?city=${c.id}&zone=${zone}&lang=${lang}`); }catch(e){ data = null; T.toast(e.message,'bad'); }
-  render();
+  T.store.set('taap.new', isNew() ? '1' : '');
+  try{ data = await T.api(`/api/worker?city=${c.id}&zone=${zone}&lang=${lang}${isNew()?'&new=1':''}`); }catch(e){ data = null; T.toast(e.message,'bad'); }
+  render(); loadHelp();
 }
 function render(){
   const bc = T.bandColors(), card = T.$('#card');
@@ -106,10 +143,18 @@ function speak(){
 }
 (async function(){
   meta = await T.api('/api/meta').catch(() => ({}));
+  const qp = new URLSearchParams(location.search);
+  if(qp.get('city')){ T.store.set('taap.city', qp.get('city')); if(qp.get('zone')) T.store.set('taap.zone.'+qp.get('city'), qp.get('zone')); }
   await T.nav({onCity: () => { fillZones(); load(); }});
   if(meta.bot_username){ const b = T.$('#bot'); b.hidden = false; b.href = 'https://t.me/' + meta.bot_username; }
   applyLang(); fillZones();
-  T.$('#zone').onchange = load;
+  T.$('#newW').checked = T.store.get('taap.new') === '1';
+  T.$('#newW').onchange = load;
+  T.$('#plannerLink').href = T.link('/planner');
+  T.$('#locate').onclick = () => { if(!navigator.geolocation) return T.toast('Location not available','bad');
+    navigator.geolocation.getCurrentPosition(p => { here = [p.coords.latitude.toFixed(5), p.coords.longitude.toFixed(5)]; loadHelp(); },
+      () => T.toast(lang==='hi' ? 'जगह नहीं मिली — इलाके के हिसाब से दिखा रहे हैं' : 'Could not get your location — showing the zone', 'bad'), {timeout:8000}); };
+  T.$('#zone').onchange = () => { here = null; load(); };
   T.$$('.lang button').forEach(b => b.onclick = () => { lang = b.dataset.l; T.store.set('taap.lang', lang); applyLang(); fillZones(); load(); });
   T.$('#speak').onclick = speak;
   if('speechSynthesis' in window) speechSynthesis.getVoices();

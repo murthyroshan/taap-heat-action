@@ -41,6 +41,16 @@
 const ICON = {water:'💧',labour:'👷',disaster:'🛟',health:'🏥'}, REP = {water:['🚱','No drinking water'],shade:['⛱️','No shade'],work:['⛔','Work not stopped'],ill:['🤒','Someone unwell']};
 const REP_ROLE = {water:'water',shade:'disaster',work:'labour',ill:'health'};
 let mode = 'live', state = null;
+const LOCATED = ['water','cool','mobile'];
+function askLocation(aid){
+  return new Promise(resolve => {
+    const label = prompt(`Where is it? Give it a name so workers can find it (e.g. "Community hall, Sector 4").\nYour current location will be attached. Leave empty to mark done without a location.`, '');
+    if(label === null) return resolve(null);
+    if(!label.trim() || !navigator.geolocation) return resolve({});
+    navigator.geolocation.getCurrentPosition(p => resolve({lat:p.coords.latitude, lon:p.coords.longitude, label:label.trim()}),
+      () => { T.toast('Location unavailable — marked done without it','bad'); resolve({}); }, {timeout:8000});
+  });
+}
 const dept = () => T.$('#dept').value;
 function moveSeg(){ const on = T.$('#seg .on'), bg = T.$('#seg .pill-bg'); bg.style.left = on.offsetLeft+'px'; bg.style.width = on.offsetWidth+'px'; }
 function fillDepts(){ const c = T.cities[T.city()], saved = T.store.get('taap.dept');
@@ -67,7 +77,10 @@ function render(){
   T.$('#reps').innerHTML = reps.length ? reps.map(r => `<div class="rep"><span style="font-size:20px">${(REP[r.type]||['📣'])[0]}</span><div class="grow"><b>${T.esc((REP[r.type]||['',r.type])[1])}</b><div class="note">${T.esc(r.zone_name)} · ${T.esc(r.time)}</div></div>
       ${r.status==='resolved' ? `<span class="status-chip done">Resolved</span>` : `<button class="ghost" data-res="${T.esc(r.sk)}">Resolve</button>`}</div>`).join('')
     : '<div class="empty">No worker reports for your department today.</div>';
-  T.$$('[data-done]').forEach(b => b.onclick = () => act('done', b, {zone:b.dataset.done.split('|')[0], action_id:b.dataset.done.split('|')[1], mode, date:state.snapshot.date}));
+  T.$$('[data-done]').forEach(b => b.onclick = async () => {
+    const [zone, action_id] = b.dataset.done.split('|'), body = {zone, action_id, mode, date:state.snapshot.date};
+    if(LOCATED.includes(action_id)){ const loc = await askLocation(action_id); if(loc === null) return; Object.assign(body, loc); }
+    act('done', b, body); });
   T.$$('[data-res]').forEach(b => b.onclick = () => act('resolve', b, {sk:b.dataset.res, date:T.todayIST()}));
   T.buttons();
 }

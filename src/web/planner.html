@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Safe shift planner — Taap</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E🔥%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@500;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/app.css">
+</head>
+<body>
+<div class="bgfx"></div><div class="progress-top" id="readbar"></div>
+<nav id="nav" data-page="planner" data-city="1"></nav>
+<header class="page-hero">
+  <span class="eyebrow reveal">🏗️ For contractors &amp; supervisors</span>
+  <h1 class="reveal">Get the work done. <span class="heat-text">Without the heatstroke.</span></h1>
+  <p class="lede reveal">Tell us how many hours of heavy work the site needs today. Taap fits them into the hours where it is safe, with the right rest each hour — and shows what the usual 9-to-5 would cost.</p>
+</header>
+<div class="wrap">
+  <section class="card reveal">
+    <div class="grid3" style="align-items:end">
+      <div class="field"><label for="zone">Site area</label><select id="zone"></select></div>
+      <div class="field"><label for="hours">Hours of heavy work needed: <b id="hv">8</b></label><input type="range" id="hours" class="slider" min="2" max="10" step="1" value="8"></div>
+      <label class="toggle" style="display:flex;gap:10px;align-items:center;font-weight:700"><input type="checkbox" id="newW" style="width:20px;height:20px;accent-color:var(--ember)">Crew has new workers (under 2 weeks)</label>
+    </div>
+  </section>
+  <section class="kpi-mini reveal" id="kpis"></section>
+  <div class="grid2">
+    <section class="card reveal"><h3>Today's safe schedule</h3><div id="sched"></div></section>
+    <section class="card reveal" style="--d:.06s"><h3>Workers' rights</h3><div id="rights" class="rule" style="font-weight:600"></div>
+      <h3 style="margin-top:18px">Why plan it</h3><p class="note" id="why"></p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button class="primary" onclick="print()">🖨️ Print for the site</button><a class="ghost" id="share" target="_blank" rel="noopener">📲 Send on WhatsApp</a></div></section>
+  </div>
+</div>
+<footer id="foot"></footer>
+<script src="assets/core.js"></script>
+<script>
+let P = null;
+function fillZones(){ const c = T.cities[T.city()], saved = T.store.get('taap.zone.'+c.id);
+  T.$('#zone').innerHTML = c.zones.map(z => `<option value="${z.id}">${T.esc(z.name)}</option>`).join('');
+  if(saved && c.zones.some(z => z.id===saved)) T.$('#zone').value = saved; }
+async function load(){
+  const c = T.cities[T.city()], z = T.$('#zone').value, h = T.$('#hours').value, nw = T.$('#newW').checked;
+  T.$('#hv').textContent = h; T.store.set('taap.zone.'+c.id, z);
+  try{ P = await T.api(`/api/shift?city=${c.id}&zone=${z}&hours=${h}${nw?'&new=1':''}`); }catch(e){ T.$('#sched').innerHTML = `<div class="empty">${T.esc(e.message)} — in the demo snapshot only 8 hours is available.</div>`; return; }
+  render();
+}
+function render(){
+  const bc = T.bandColors(), c = T.cities[T.city()];
+  T.$('#kpis').innerHTML = `<div><b>${P.feasible ? '✓' : '✗'}</b><span>${P.feasible ? 'all '+P.hours_needed+' h fit safely today' : 'short by '+Math.round(P.short_by_min/6)/10+' h — split across days or add crew'}</span></div>
+    <div><b>${P.start||'–'} → ${P.finish||'–'}</b><span>planned work window</span></div><div><b>${P.safe_capacity_hours} h</b><span>safe heavy-work capacity today</span></div>
+    <div><b>${P.usual_hot_hours} h</b><span>of the usual ${P.usual_shift} shift in very high / extreme heat</span></div>`;
+  T.$('#sched').innerHTML = P.rows.map(r => `<div class="hour-row"><span class="h">${String(r.hour).padStart(2,'0')}:00</span><span class="sw" style="background:${bc[r.band]}"></span>
+      <span>${r.work ? `<b>${r.work} min work</b>${r.rest?` · ${r.rest} min rest in shade`:''}` : r.cap ? '<span class="note">no work needed in this hour</span>' : '<b style="color:#ff6961">No heavy work</b>'}<span class="note"> · WBGT ${r.wbgt}°</span>
+      <div class="dept-bar" style="margin-top:6px"><i style="width:${r.work/60*100}%;background:${bc[r.band]}"></i></div></span></div>`).join('');
+  requestAnimationFrame(() => T.$$('#sched .dept-bar i').forEach(i => i.style.transition = 'width 1s'));
+  const rt = P.rights || {}; T.$('#rights').innerHTML = `${T.esc(rt.en||'')}<div class="hi" style="margin-top:8px">${T.esc(rt.hi||'')}</div>`;
+  T.$('#why').textContent = `India lost an estimated 247 billion labour hours to heat in 2024 (Lancet Countdown 2025). Moving work into cooler hours keeps output while cutting heat exposure: this plan puts ${P.planned_hot_minutes} minutes of heavy work in very high / extreme heat, against ${P.usual_hot_hours*60} in the usual shift.${P.new_worker?' Limits are stricter because new workers are not yet acclimatised.':''}`;
+  const lines = P.rows.filter(r => r.work).map(r => `${String(r.hour).padStart(2,'0')}:00 — ${r.work} min work${r.rest?`, ${r.rest} min rest`:''}`).join('\n');
+  T.$('#share').href = 'https://wa.me/?text=' + encodeURIComponent(`Safe shift for ${P.zone.name}, ${P.date}\n${lines}\n\n${rt.hi||''}\n— Taap`);
+  T.buttons();
+}
+(async function(){
+  await T.nav({onCity: () => { fillZones(); load(); }});
+  fillZones(); T.$('#zone').onchange = load; T.$('#hours').oninput = () => T.$('#hv').textContent = T.$('#hours').value; T.$('#hours').onchange = load; T.$('#newW').onchange = load;
+  T.boot(); load();
+})();
+</script>
+</body>
+</html>

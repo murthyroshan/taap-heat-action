@@ -25,7 +25,7 @@ from heatplan.plan import list_cities, load_city  # noqa: E402
 OUT = os.environ.get("EXPORT_DIR", os.path.join(ROOT, "docs"))
 WEB = os.path.join(ROOT, "src", "web")
 ST = store.get_store()
-KEYS = ("city", "mode", "date", "zone", "lang")
+KEYS = ("city", "mode", "date", "zone", "lang", "new")
 
 
 def static_name(path, q):
@@ -79,8 +79,11 @@ def main():
             for z in cfg["zones"]:
                 get("/poster", {"city": c, "mode": mode, "zone": z["id"], **q}, out=f"posters/{c}-{mode}-{z['id']}.html")
         for z in cfg["zones"]:
-            for lang in ("hi", "en"):
-                get("/api/worker", {"city": c, "zone": z["id"], "lang": lang})
+            get("/api/nearby", {"city": c, "zone": z["id"]})
+            for new in ("", "1"):
+                get("/api/shift", {"city": c, "zone": z["id"], "hours": "8", "new": new} if new else {"city": c, "zone": z["id"], "hours": "8"})
+                for lang in ("hi", "en"):
+                    get("/api/worker", {"city": c, "zone": z["id"], "lang": lang, **({"new": new} if new else {})})
         if not live or not live.get("snapshot"):
             print("  ! no live snapshot - run the server once, or use --refresh")
     print(f"\nWrote {OUT}. Commit it, then GitHub -> Settings -> Pages -> master /docs.")

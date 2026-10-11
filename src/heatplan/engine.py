@@ -135,14 +135,17 @@ def run(city_id: str, mode: str, day: str, series: dict, st, notifier: Notifier 
     return snap
 
 
-def mark_done(st, city_id, mode, day, zone, action_id, who: str) -> dict | None:
+def mark_done(st, city_id, mode, day, zone, action_id, who: str, place: dict | None = None) -> dict | None:
+    """Mark a plan action done; `place` ({lat, lon, label}) puts e.g. a cooling centre on the workers' map."""
     pk, sk = store.act_pk(city_id, mode, day), f"{zone}#{action_id}"
     item = st.get(pk, sk)
     if not item:
         return None
     if item["status"] != "done":
         item.update(status="done", done_at=store.now_ts(), done_by=who)
-        st.put(pk, sk, item)
+    if place:
+        item["place"] = place
+    st.put(pk, sk, item)
     return item
 
 

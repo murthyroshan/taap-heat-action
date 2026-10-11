@@ -199,3 +199,12 @@ def test_sqlite_store_matches_memory_store(tmp_path):
         assert [r["sk"] for r in st.query("P", newest_first=True, limit=1)] == ["b"]
         st.delete("P", "a")
         assert [r["sk"] for r in st.query("P")] == ["b"]
+
+
+def test_new_workers_get_stricter_bands():
+    assert plan.band_for(26.0) == 1 and plan.band_for(26.0, new_worker=True) == 3
+    assert plan.band_for(28.5, new_worker=True) == 4
+    city = plan.load_city("delhi")
+    zr = plan.zone_risk(city["zones"][0], synthetic_day(tmax=33, tmin=24, rh_day=30, rh_night=50, sun=500), "2024-05-28", city)
+    mine = plan.personalise(zr, True)
+    assert mine["band"] > zr["band"] and mine["new_worker"] and plan.personalise(zr, False) is zr

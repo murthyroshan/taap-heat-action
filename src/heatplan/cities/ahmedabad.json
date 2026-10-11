@@ -131,5 +131,9 @@
     "default": "2024-05-23"
   },
   "alert_min_band": 2,
-  "actions_min_tier": "yellow"
+  "actions_min_tier": "yellow",
+  "rights": {
+    "en": "NDMA heatwave guidelines ask employers to move heavy outdoor work to cooler hours and provide water, shade and rest. Ask your contractor for these.",
+    "hi": "NDMA दिशानिर्देश: भारी बाहरी काम ठंडे घंटों में करवाया जाए और पानी, छाँव व आराम दिया जाए। अपने ठेकेदार से यह माँगें।"
+  }
 }

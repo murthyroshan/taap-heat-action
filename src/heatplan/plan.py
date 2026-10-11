@@ -29,12 +29,36 @@ BANDS = [
 ]
 
 
-def band_for(w: float) -> int:
+# Workers new to heavy outdoor work (or to the city) in the last ~2 weeks are not
+# acclimatised. ACGIH's action limits for unacclimatised heavy work sit 2.5-3.5 C
+# below the TLVs above (24.0 / 25.5 / 28.0), so their bands start earlier.
+UNACCLIMATISED_MIN = [None, 22.0, 24.0, 25.5, 28.0]
+
+
+def band_for(w: float, new_worker: bool = False) -> int:
+    mins = UNACCLIMATISED_MIN if new_worker else [r["min"] for r in BANDS]
     b = 0
-    for row in BANDS[1:]:
-        if w >= row["min"]:
-            b = row["band"]
+    for band in range(1, len(BANDS)):
+        if w >= mins[band]:
+            b = band
     return b
+
+
+def _window(hourly: list[dict], worst: int):
+    risky = [x["hour"] for x in hourly if x["band"] >= max(worst, 1) - 1 and x["band"] >= 1]
+    return (_hour_label(min(risky)), _hour_label(max(risky) + 1)) if risky else (None, None)
+
+
+def personalise(zr: dict, new_worker: bool) -> dict:
+    """Zone risk re-banded for one worker (stricter limits for new, unacclimatised workers)."""
+    if not zr or not zr.get("available") or not new_worker:
+        return zr
+    hourly = [{**h, "band": band_for(h["wbgt"], True)} for h in zr["hourly"]]
+    worst = max(h["band"] for h in hourly)
+    start, end = _window(hourly, worst)
+    b = BANDS[worst]
+    return {**zr, "hourly": hourly, "band": worst, "work": b["work"], "rest": b["rest"],
+            "start": start, "end": end, "new_worker": True}
 
 
 @lru_cache(maxsize=None)
@@ -95,7 +119,7 @@ def zone_risk(zone: dict, hours: list[dict], day: str, city: dict) -> dict:
     tmax = max(x["temp"] for x in hourly)
     peak = max(hourly, key=lambda x: x["wbgt"])
     worst = peak["band"]
-    risky = [x["hour"] for x in hourly if x["band"] >= max(worst, 1) - 1 and x["band"] >= 1]
+    start, end = _window(hourly, worst)
     night_min = min(night_temps) if night_temps else None
     hot_night = night_min is not None and night_min >= city["hot_night_c"]
     base_tier = tier_for(tmax, city["tiers"])
@@ -114,8 +138,8 @@ def zone_risk(zone: dict, hours: list[dict], day: str, city: dict) -> dict:
         "band": worst,
         "work": b["work"],
         "rest": b["rest"],
-        "start": _hour_label(min(risky)) if risky else None,
-        "end": _hour_label(max(risky) + 1) if risky else None,
+        "start": start,
+        "end": end,
         "hourly": hourly,
     }
 

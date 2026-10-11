@@ -20,7 +20,7 @@ T.STATIC = !!document.querySelector('meta[name="taap-static"]');
 function staticPath(path){
   const [p, qs] = path.split('?'); const q = new URLSearchParams(qs||'');
   const parts = [p.replace(/^\/api\//,'').replace(/\//g,'-')];
-  ['city','mode','date','zone','lang'].forEach(k => q.get(k) && parts.push(q.get(k)));
+  ['city','mode','date','zone','lang','new'].forEach(k => q.get(k) && parts.push(q.get(k)));
   return 'data/' + parts.join('_') + '.json';
 }
 T.api = async (path, body) => {
@@ -35,6 +35,11 @@ T.api = async (path, body) => {
 };
 if(T.STATIC) document.addEventListener('DOMContentLoaded', () => document.body.insertAdjacentHTML('afterbegin',
   '<div style="position:relative;z-index:1001;text-align:center;padding:7px 12px;font-size:12.5px;font-weight:600;background:linear-gradient(90deg,#ff6a1a,#ff2d55);color:#fff">Read-only demo snapshot · run Taap locally for live alerts, officer actions and the assistant</div>'));
+document.addEventListener('DOMContentLoaded', () => {
+  if(location.pathname.includes('saathi')) return;
+  const a = document.createElement('a'); a.href = T.link('/saathi'); a.className = 'fab'; a.setAttribute('aria-label','Talk to Saathi');
+  a.innerHTML = '<span class="fab-dot"></span>🎙️ <b>Saathi</b>'; document.body.append(a);
+});
 T.link = page => T.STATIC ? (page === '/' ? 'index.html' : page.slice(1) + '.html') : page;
 
 /* toasts */
@@ -80,7 +85,7 @@ T.themeIcon = () => { const b = $('#theme'); if(b) b.textContent = document.docu
 (function(){ const t = T.store.get('taap.theme'); if(t) document.documentElement.dataset.theme = t; })();
 
 /* shared nav: <nav id="nav" data-page="workers" data-city="1"></nav> */
-const NAV = [['/','Home'],['/dashboard','Dashboard'],['/replay','2024 Replay'],['/workers','Workers'],['/officers','Officers'],['/ledger','Ledger'],['/plans','Plans'],['/method','Method']];
+const NAV = [['/','Home'],['/dashboard','Dashboard'],['/replay','2024 Replay'],['/workers','Workers'],['/saathi','🎙️ Saathi'],['/officers','Officers'],['/planner','Shift planner'],['/ledger','Ledger'],['/plans','Plans'],['/method','Method']];
 T.cities = {}; T.bands = [];
 T.city = () => (T.$('#city') || {}).value || T.store.get('taap.city') || 'delhi';
 T.nav = async ({onCity}={}) => {

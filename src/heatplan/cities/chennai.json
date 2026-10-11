@@ -1,0 +1,141 @@
+{
+  "id": "chennai",
+  "name": "Chennai",
+  "name_hi": "चेन्नई",
+  "plan_name": "Chennai heat plan (illustrative, NDMA-based)",
+  "timezone": "Asia/Kolkata",
+  "notes": [
+    "Illustrative configuration built from NDMA heatwave guidelines and IMD criteria; replace thresholds and duties with the city's own Heat Action Plan (Plans -> import PDF).",
+    "Coastal city: thresholds use IMD's coastal heatwave criterion (max >= 37 C) and are illustrative.",
+    "Zones are named localities ~8-12 km apart, matching the ~9 km resolution of the forecast models. They are not municipal wards.",
+    "The hot-night threshold is illustrative and should be set by the city.",
+    "To avoid alert fatigue, departments are tasked only once the plan is active (yellow tier or above); workers get a WBGT push alert from band 2 on any day.",
+    "Worker messages are Hindi and English for now; local-language messages (Tamil / Bengali / Telugu / Marathi) are on the roadmap."
+  ],
+  "tiers": {
+    "yellow": 37.0,
+    "orange": 40.0,
+    "red": 42.0
+  },
+  "hot_night_c": 29.0,
+  "zones": [
+    {
+      "id": "georgetown",
+      "name": "George Town",
+      "name_hi": "जॉर्ज टाउन",
+      "lat": 13.094,
+      "lon": 80.288
+    },
+    {
+      "id": "perambur",
+      "name": "Perambur",
+      "name_hi": "पेरंबूर",
+      "lat": 13.118,
+      "lon": 80.233
+    },
+    {
+      "id": "annanagar",
+      "name": "Anna Nagar",
+      "name_hi": "अन्ना नगर",
+      "lat": 13.085,
+      "lon": 80.21
+    },
+    {
+      "id": "ambattur",
+      "name": "Ambattur",
+      "name_hi": "अंबत्तूर",
+      "lat": 13.114,
+      "lon": 80.154
+    },
+    {
+      "id": "tnagar",
+      "name": "T. Nagar",
+      "name_hi": "टी नगर",
+      "lat": 13.042,
+      "lon": 80.234
+    },
+    {
+      "id": "adyar",
+      "name": "Adyar",
+      "name_hi": "अडयार",
+      "lat": 13.006,
+      "lon": 80.257
+    },
+    {
+      "id": "tambaram",
+      "name": "Tambaram",
+      "name_hi": "तांबरम",
+      "lat": 12.925,
+      "lon": 80.118
+    }
+  ],
+  "roles": {
+    "water": "Water supply (CMWSSB)",
+    "health": "Health department (Greater Chennai Corporation)",
+    "labour": "Labour department",
+    "disaster": "Disaster management (Greater Chennai Corporation)"
+  },
+  "actions": [
+    {
+      "id": "water",
+      "role": "water",
+      "when": {
+        "band": 3
+      },
+      "text": "Set up drinking-water points at labour nakas, markets and construction sites in {zone}, {start}-{end}.",
+      "ref": "NDMA heatwave guidelines: drinking water at worksites and public places"
+    },
+    {
+      "id": "break",
+      "role": "labour",
+      "when": {
+        "band": 4
+      },
+      "text": "Ask contractors in {zone} to stop heavy outdoor work during {start}-{end} and reschedule to cooler hours.",
+      "ref": "NDMA heatwave guidelines: rescheduling outdoor work"
+    },
+    {
+      "id": "cool",
+      "role": "disaster",
+      "when": {
+        "tier": "orange"
+      },
+      "text": "Open cooling shelters / shaded rest areas in {zone}, {start}-{end}, and publish their locations.",
+      "ref": "NDMA heatwave guidelines: cooling shelters"
+    },
+    {
+      "id": "hosp",
+      "role": "health",
+      "when": {
+        "tier": "orange"
+      },
+      "text": "Alert hospitals and health centres serving {zone}; stock ORS, ice packs and IV fluids before {start}.",
+      "ref": "NDMA heatwave guidelines: health facility preparedness"
+    },
+    {
+      "id": "mobile",
+      "role": "disaster",
+      "when": {
+        "tier": "red"
+      },
+      "text": "Deploy mobile medical / heat-relief teams to hotspots in {zone}, {start}-{end}.",
+      "ref": "NDMA heatwave guidelines: emergency response on red alert"
+    }
+  ],
+  "reference_event": {
+    "date": "2024-05-01",
+    "text": "Humid pre-monsoon heat in Tamil Nadu, April-May 2024. Check IMD station values before quoting a number.",
+    "source": "https://mausam.imd.gov.in/"
+  },
+  "replay": {
+    "start": "2024-04-15",
+    "end": "2024-06-10",
+    "default": "2024-05-01"
+  },
+  "alert_min_band": 2,
+  "actions_min_tier": "yellow",
+  "rights": {
+    "en": "NDMA heatwave guidelines ask employers to move heavy outdoor work to cooler hours and provide water, shade and rest. Ask your contractor for these.",
+    "hi": "NDMA दिशानिर्देश: भारी बाहरी काम ठंडे घंटों में करवाया जाए और पानी, छाँव व आराम दिया जाए। अपने ठेकेदार से यह माँगें।"
+  }
+}

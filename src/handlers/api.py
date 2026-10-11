@@ -8,10 +8,11 @@ import os
 import re
 from datetime import date
 
-from heatplan import cap, engine, messages, poster, replay, store, weather
+from heatplan import cap, engine, messages, places, plan, poster, replay, saathi, shift, store, weather
 from heatplan.plan import BANDS, list_cities, load_city
 
 ASK_PER_MINUTE = 10
+SAATHI_PER_MINUTE = 20
 MAX_PDF_B64 = 4 * 1024 * 1024 * 4 // 3 + 4  # 4 MB PDF; Lambda sync payloads cap at 6 MB
 
 
@@ -24,7 +25,7 @@ def _import_plan(pdf_b64: str) -> dict:
     return json.loads(res["Payload"].read() or b"{}")
 WEB_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "web")
 PAGES = {"/": "index", "/index.html": "index", "/dashboard": "dashboard", "/workers": "workers", "/officers": "officers",
-         "/ledger": "ledger", "/replay": "replay", "/plans": "plans", "/method": "method"}
+         "/ledger": "ledger", "/replay": "replay", "/planner": "planner", "/saathi": "saathi", "/plans": "plans", "/method": "method"}
 ASSET_TYPES = {".css": "text/css", ".js": "application/javascript", ".svg": "image/svg+xml", ".json": "application/json"}
 ASSET_RE = re.compile(r"^/assets/([a-z0-9_-]+\.(?:css|js|svg|json))$")
 
@@ -46,6 +47,14 @@ def _city(q):
     if c not in list_cities():
         raise ValueError("unknown city")
     return c
+
+
+def _latlon(q):
+    try:
+        lat, lon = float(q["lat"]), float(q["lon"])
+        return (lat, lon) if 6 <= lat <= 37 and 68 <= lon <= 98 else (None, None)
+    except (KeyError, TypeError, ValueError):
+        return None, None
 
 
 def ledger(st, city: str) -> dict:
@@ -106,12 +115,36 @@ def route(method: str, path: str, q: dict, payload: dict, st=None, agent=None, i
         zr = next((z for z in snap["zones"] if z["zone"] == zone["id"]), None) if snap else None
         if not zr or not zr.get("available"):
             return _resp({"zone": zone, "risk": None, "text": messages.status_text(None, zone, "", lang), "voice": ""})
+        zr = plan.personalise(zr, q.get("new") in ("1", "true"))
         if zr["band"] >= 1:
             msg = messages.worker_alert(zr, zone, snap["date"], lang, replay=mode == "replay")
         else:
             t = messages.status_text(zr, zone, snap["date"], lang)
             msg = {"text": t, "voice": t.replace("🟢", "")}
         return _resp({"zone": zone, "date": snap["date"], "risk": zr, "bands": BANDS, **msg})
+
+    if method == "GET" and path in ("/api/nearby", "/api/shift"):
+        city, mode = _city(q), q.get("mode", "live")
+        cfg = load_city(city)
+        lat, lon = _latlon(q)
+        zone = places.nearest_zone(cfg, lat, lon) if lat is not None else \
+            next((z for z in cfg["zones"] if z["id"] == q.get("zone")), cfg["zones"][0])
+        snap = store.load_snapshot(st, city, mode, q.get("date"))
+        zr = next((z for z in snap["zones"] if z["zone"] == zone["id"]), None) if snap else None
+        new = q.get("new") in ("1", "true")
+        if path == "/api/shift":
+            if not zr or not zr.get("available"):
+                return _resp({"error": "no forecast for this zone yet"}, 404)
+            try:
+                hours = min(12.0, max(1.0, float(q.get("hours", 8))))
+            except ValueError:
+                return _resp({"error": "hours must be a number"}, 400)
+            return _resp({"zone": zone, "date": snap["date"], "rights": cfg.get("rights"),
+                          **shift.plan_shift(zr, hours, new_worker=new)})
+        band = plan.personalise(zr, new)["band"] if zr and zr.get("available") else 0
+        out = places.nearby(st, city, lat if lat is not None else zone["lat"], lon if lon is not None else zone["lon"],
+                            band, mode, snap["date"] if snap else "")
+        return _resp({"zone": zone, "from": "you" if lat is not None else "zone centre", **out})
 
     if method == "GET" and path == "/api/ledger":
         return _resp(ledger(st, _city(q)))
@@ -123,8 +156,15 @@ def route(method: str, path: str, q: dict, payload: dict, st=None, agent=None, i
         name = (str(payload.get("name") or "").strip() or "Officer (web)")[:40]
         city = _city(payload)
         if path.endswith("/done"):
+            place = None
+            try:
+                lat, lon = float(payload["lat"]), float(payload["lon"])
+                if 6 <= lat <= 37 and 68 <= lon <= 98:
+                    place = {"lat": round(lat, 5), "lon": round(lon, 5), "label": str(payload.get("label") or "")[:60]}
+            except (KeyError, TypeError, ValueError):
+                pass
             item = engine.mark_done(st, city, str(payload.get("mode", "live")), str(payload.get("date", "")),
-                                    str(payload.get("zone", "")), str(payload.get("action_id", "")), name)
+                                    str(payload.get("zone", "")), str(payload.get("action_id", "")), name, place)
             return _resp({"action": item} if item else {"error": "no such action"}, 200 if item else 404)
         pk, sk = f"REP#{city}#{payload.get('date', '')}", str(payload.get("sk", ""))
         rep = st.get(pk, sk)
@@ -141,7 +181,7 @@ def route(method: str, path: str, q: dict, payload: dict, st=None, agent=None, i
             cfg = load_city(c)
             out.append({k: cfg.get(k) for k in ("id", "name", "name_hi", "plan_name", "tiers", "zones", "roles", "notes",
                                                 "replay", "reference_event", "hot_night_c", "actions",
-                                                "alert_min_band", "actions_min_tier")})
+                                                "alert_min_band", "actions_min_tier", "rights")})
         return _resp({"cities": out, "bands": BANDS})
 
     if method == "GET" and path == "/api/state":
@@ -209,6 +249,18 @@ def route(method: str, path: str, q: dict, payload: dict, st=None, agent=None, i
         if not importer:
             return _resp({"error": "plan import not configured"}, 503)
         return _resp(importer(pdf_b64))
+
+    if method == "POST" and path == "/api/saathi":
+        text = str(payload.get("text") or "").strip()
+        if not text:
+            return _resp({"error": "say or type something"}, 400)
+        minute = store.now_ts() // 60
+        used = (st.get("RATE", f"saathi#{minute}") or {"n": 0})["n"]
+        st.put("RATE", f"saathi#{minute}", {"n": used + 1})
+        lat, lon = _latlon(payload)
+        return _resp(saathi.reply(st, text, _city(payload), payload.get("zone"), payload.get("lang", "hi"), lat, lon,
+                                  bool(payload.get("new")), str(payload.get("session") or "web")[:40],
+                                  use_model=bool(agent) and used < SAATHI_PER_MINUTE))
 
     if method == "POST" and path == "/api/ask":
         question = (payload.get("question") or "").strip()[:500]
