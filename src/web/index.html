@@ -126,7 +126,7 @@ main{max-width:1320px;margin:0 auto;padding:0 clamp(16px,3vw,32px) 60px;display:
 .reveal.in.tilt{transform:perspective(900px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg)) translateZ(0);transition:transform .25s var(--ease),box-shadow .25s,opacity .8s var(--ease)}
 
 /* KPIs */
-.kpis{grid-column:1/-1;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-top:-30px}
+.kpis{grid-column:1/-1;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px}
 .kpi .l{color:var(--muted);font-size:13px;font-weight:600}
 .kpi .v{font-size:30px;font-weight:800;letter-spacing:-.03em;margin-top:8px;font-variant-numeric:tabular-nums;min-height:40px;display:flex;align-items:center}
 .kpi .bar{height:4px;border-radius:4px;background:var(--line);margin-top:12px;overflow:hidden}
@@ -214,7 +214,7 @@ main{max-width:1320px;margin:0 auto;padding:0 clamp(16px,3vw,32px) 60px;display:
 @media (max-width:900px){.steps{grid-template-columns:1fr 1fr}}
 @media (max-width:520px){.steps{grid-template-columns:1fr}}
 .step{counter-increment:s}
-.step::after{content:"0" counter(s);position:absolute;right:14px;top:6px;font-size:54px;font-weight:800;color:var(--line2);letter-spacing:-.04em}
+
 .step .em{font-size:28px}
 .step h4{margin:10px 0 6px;font-size:17px}
 .step p{margin:0;color:var(--muted);font-size:14px}
@@ -241,11 +241,48 @@ pre{max-height:320px;overflow:auto;background:var(--bg2);padding:12px;border-rad
 .toast.bad{border-color:rgba(255,59,48,.6)}.toast.good{border-color:rgba(52,199,89,.6)}
 footer{max-width:1320px;margin:0 auto;padding:0 clamp(16px,3vw,32px) 40px}
 .progress-top{position:fixed;top:0;left:0;height:2px;z-index:1001;background:linear-gradient(90deg,var(--ember2),var(--ember3));width:0}
-@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}.reveal{opacity:1;transform:none}.hours div,.bt div{transform:none}}
+
+/* ---------- round 2 effects ---------- */
+.spot{position:fixed;left:0;top:0;width:520px;height:520px;margin:-260px 0 0 -260px;border-radius:50%;pointer-events:none;z-index:0;background:radial-gradient(circle,rgba(255,120,40,.10),transparent 60%);transition:opacity .4s;mix-blend-mode:screen;opacity:0}
+:root[data-theme="light"] .spot{mix-blend-mode:multiply;background:radial-gradient(circle,rgba(255,120,40,.10),transparent 60%)}
+.haze{filter:url(#haze)}
+.swap{display:inline-block;position:relative}
+.swap span{display:inline-block;transition:opacity .5s var(--ease),transform .5s var(--ease),filter .5s}
+.swap span.out{opacity:0;transform:translateY(-.25em) rotateX(60deg);filter:blur(6px)}
+.ticker{position:relative;overflow:hidden;border-block:1px solid var(--line);background:color-mix(in srgb,var(--bg2) 70%,transparent);padding:12px 0;margin:-20px 0 34px;mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent)}
+.ticker .track{display:flex;gap:40px;width:max-content;animation:marquee 40s linear infinite}
+.ticker:hover .track{animation-play-state:paused}
+.ticker .it{display:inline-flex;align-items:center;gap:8px;font-weight:600;font-size:14px;white-space:nowrap}
+.ticker .it i{width:9px;height:9px;border-radius:50%;box-shadow:0 0 10px currentColor}
+.ticker .it b{font-family:"JetBrains Mono",monospace;font-weight:500}
+@keyframes marquee{to{transform:translateX(-50%)}}
+.section-title h2{position:relative;padding-bottom:6px}
+.section-title h2::after{content:"";position:absolute;left:0;bottom:0;height:3px;width:100%;border-radius:3px;background:linear-gradient(90deg,var(--ember2),var(--ember3));transform:scaleX(0);transform-origin:left;transition:transform 1s var(--ease) .25s}
+.section-title.in h2::after{transform:scaleX(1)}
+.ripple{position:absolute;border-radius:50%;background:rgba(255,255,255,.45);transform:scale(0);animation:rip .6s ease-out forwards;pointer-events:none}
+@keyframes rip{to{transform:scale(4);opacity:0}}
+.primary,.ghost,.ctl{position:relative;overflow:hidden}
+.spark{position:fixed;width:6px;height:6px;border-radius:50%;pointer-events:none;z-index:3000;background:var(--ember2);box-shadow:0 0 10px var(--ember)}
+.heatblob{animation:blob 3.2s ease-in-out infinite;transform-origin:center;transform-box:fill-box}
+@keyframes blob{50%{opacity:.55}}
+.flip{perspective:1100px;min-height:210px;background:none;border:0;box-shadow:none;padding:0;backdrop-filter:none;overflow:visible}
+.flip::before{display:none}
+.flip .in3d{position:relative;height:100%;min-height:210px;transform-style:preserve-3d;transition:transform .8s var(--ease)}
+.flip:hover .in3d,.flip:focus-within .in3d{transform:rotateY(180deg)}
+.flip .face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);backdrop-filter:blur(14px)}
+.flip .back{transform:rotateY(180deg);background:linear-gradient(150deg,color-mix(in srgb,var(--ember) 22%,var(--card-solid)),var(--card-solid));display:flex;flex-direction:column;justify-content:center}
+.flip .back b{font-size:30px;letter-spacing:-.03em}
+.flip .hint{position:absolute;bottom:12px;right:14px;font-size:11.5px;color:var(--faint)}
+.step::after{z-index:1}
+.flip .face.front::after{content:"0" attr(data-n);position:absolute;right:14px;top:6px;font-size:54px;font-weight:800;color:var(--line2);letter-spacing:-.04em}
+
+@media (prefers-reduced-motion:reduce){.spot,.ticker .track{display:none}.flip .in3d{transition:none}*,*::before,*::after{animation:none!important;transition:none!important}.reveal{opacity:1;transform:none}.hours div,.bt div{transform:none}}
 </style>
 </head>
 <body>
 <div class="bgfx"></div>
+<div class="spot" id="spot"></div>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="haze" x="-20%" y="-20%" width="140%" height="140%"><feTurbulence id="hazeT" type="fractalNoise" baseFrequency="0.012 0.04" numOctaves="2" seed="3" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="9" xChannelSelector="R" yChannelSelector="G"/></filter></svg>
 <div class="progress-top" id="readbar"></div>
 
 <nav>
@@ -263,13 +300,13 @@ footer{max-width:1320px;margin:0 auto;padding:0 clamp(16px,3vw,32px) 40px}
   <canvas id="embers"></canvas>
   <div>
     <span class="eyebrow reveal"><span class="live-dot"></span><span id="heroMode">Live · updated hourly</span></span>
-    <h1 class="reveal" style="--d:.08s"><span id="heroCity">Delhi</span>'s Heat Action Plan,<br><span class="heat-text">running.</span></h1>
+    <h1 class="reveal" style="--d:.08s"><span id="heroCity">Delhi</span>'s Heat Action Plan,<br><span class="swap" id="swap"><span class="heat-text">running.</span></span></h1>
     <p class="lede reveal" style="--d:.16s">Humidity-aware heat stress for every zone. Work–rest instructions to outdoor workers in Hindi. Every plan action sent to a named officer — and a public record of what actually happened.</p>
     <div class="status reveal" style="--d:.24s" id="heroStatus"><span class="chip"><span class="skel" style="width:160px;margin:0"></span></span></div>
     <div class="cta reveal" style="--d:.32s"><a class="primary" href="#ops" style="text-decoration:none">See today's plan ↓</a><a class="ghost" href="#how">How it works</a></div>
   </div>
   <div class="orb-wrap reveal" style="--d:.2s">
-    <div class="glow"></div>
+    <div class="glow haze"></div>
     <div class="orb" id="orb">
       <div class="ring r3"><b></b></div><div class="ring r1"><b></b></div><div class="ring r2"><b></b></div>
       <div class="core"></div>
@@ -278,6 +315,8 @@ footer{max-width:1320px;margin:0 auto;padding:0 clamp(16px,3vw,32px) 40px}
   </div>
   <div class="scroll-cue"><span></span>scroll</div>
 </header>
+
+<div class="ticker" aria-hidden="true"><div class="track" id="ticker"></div></div>
 
 <main>
   <section class="kpis">
@@ -317,10 +356,18 @@ footer{max-width:1320px;margin:0 auto;padding:0 clamp(16px,3vw,32px) 40px}
 
   <div class="section-title reveal" id="how"><h2>How it works</h2><p>From a forecast to a worker resting in the shade — every hour.</p></div>
   <section class="steps">
-    <div class="card step tilt reveal"><div class="shine"></div><div class="em">🌡️</div><h4>Measure what bodies feel</h4><p>Hourly WBGT per zone from temperature, humidity, wind and sun — not just the day's maximum.</p></div>
-    <div class="card step tilt reveal" style="--d:.08s"><div class="shine"></div><div class="em">🗣️</div><h4>Tell workers, in Hindi</h4><p>Work–rest schedules by Telegram text and voice. Posters for labour chowks reach people without phones.</p></div>
-    <div class="card step tilt reveal" style="--d:.16s"><div class="shine"></div><div class="em">📋</div><h4>Task named officers</h4><p>Each plan action goes to the responsible department with a Done button. Workers can report back.</p></div>
-    <div class="card step tilt reveal" style="--d:.24s"><div class="shine"></div><div class="em">🔎</div><h4>Prove it ran</h4><p>A public log of planned vs done, a CAP feed for alert systems, and a backtest on real heatwaves.</p></div>
+    <div class="card step flip reveal" style="--d:0.00s" tabindex="0"><div class="in3d">
+      <div class="face front" data-n="1"><div class="em">🌡️</div><h4>Measure what bodies feel</h4><p>Hourly WBGT per zone from temperature, humidity, wind and sun — not just the day's maximum.</p><span class="hint">hover ↻</span></div>
+      <div class="face back"><b class="heat-text">4 inputs</b><p style="margin:8px 0 0;color:var(--ink)">temperature · humidity · wind · sun → one number the body feels, every hour, every zone.</p></div></div></div>
+    <div class="card step flip reveal" style="--d:0.08s" tabindex="0"><div class="in3d">
+      <div class="face front" data-n="2"><div class="em">🗣️</div><h4>Tell workers, in Hindi</h4><p>Work–rest schedules by Telegram text and voice. Posters for labour chowks reach people without phones.</p><span class="hint">hover ↻</span></div>
+      <div class="face back"><b class="heat-text">2 taps</b><p style="margin:8px 0 0;color:var(--ink)">to subscribe. Then a Hindi alert says exactly when to rest: “30 min work, 30 min rest, 12–4 PM”.</p></div></div></div>
+    <div class="card step flip reveal" style="--d:0.16s" tabindex="0"><div class="in3d">
+      <div class="face front" data-n="3"><div class="em">📋</div><h4>Task named officers</h4><p>Each plan action goes to the responsible department with a Done button. Workers can report back.</p><span class="hint">hover ↻</span></div>
+      <div class="face back"><b class="heat-text">1 button</b><p style="margin:8px 0 0;color:var(--ink)">per action. Water, shade, work breaks, hospitals — each owned by a named department.</p></div></div></div>
+    <div class="card step flip reveal" style="--d:0.24s" tabindex="0"><div class="in3d">
+      <div class="face front" data-n="4"><div class="em">🔎</div><h4>Prove it ran</h4><p>A public log of planned vs done, a CAP feed for alert systems, and a backtest on real heatwaves.</p><span class="hint">hover ↻</span></div>
+      <div class="face back"><b class="heat-text">100% public</b><p style="margin:8px 0 0;color:var(--ink)">Planned vs done, who and when — plus a CAP 1.2 feed India's SACHET system can ingest.</p></div></div></div>
   </section>
 
   <div class="section-title reveal"><h2>Backtest</h2><p>What the plan's rules would have triggered in a real heatwave.</p></div>
@@ -465,7 +512,7 @@ async function runReplay(){
   if(!token){ toast('Set the admin token first (⚙︎).','bad'); return; }
   const b = $('#runReplay'); b.disabled = true; b.textContent = 'Running…';
   try{ const r = await api('/api/replay', {city:city(), date:$('#rdate').value, token, notify:true}); await load();
-       const st = r.snapshot.stats || {}; toast(`Replay ${r.snapshot.date}: ${st.actions_created||0} actions, ${st.officer_messages||0} officer messages, ${st.worker_alerts||0} worker alerts`,'good'); }
+       const st = r.snapshot.stats || {}; sparks($('#runReplay')); toast(`Replay ${r.snapshot.date}: ${st.actions_created||0} actions, ${st.officer_messages||0} officer messages, ${st.worker_alerts||0} worker alerts`,'good'); }
   catch(e){ toast('Replay failed: '+e.message,'bad'); }
   finally{ b.disabled = false; b.textContent = '▶ Run replay'; }
 }
@@ -503,6 +550,7 @@ function render(){
   const openReps = state.reports.filter(r => r.status!=='resolved').length;
   countUp($('#kReps'), openReps); $('#kRepsBar').style.width = Math.min(100, openReps*20)+'%';
   // map
+  heatField();
   if(s) s.zones.forEach(zr => {
     if(!zr.available) return;
     const z = c.zones.find(x => x.id===zr.zone);
@@ -525,7 +573,7 @@ function render(){
   // reports
   $('#reps').innerHTML = state.reports.length ? state.reports.map((r,i) => `<div class="rep" style="animation-delay:${i*40}ms"><span style="font-size:20px">${(REP[r.type]||['📣'])[0]}</span><div class="grow"><b>${esc((REP[r.type]||['',r.type])[1])}</b><div class="note">${esc(r.zone_name)}</div></div><span class="time">${esc(r.time)}</span>${r.status==='resolved'?'<span class="status-chip done">Resolved</span>':'<span class="status-chip open">Open</span>'}</div>`).join('')
     : '<div class="empty">No reports today. Workers report from the Telegram bot: no water, no shade, work not stopped, someone unwell.</div>';
-  bindTilt();
+  bindTilt(); bindButtons(); renderTicker();
 }
 
 function renderZone(){
@@ -607,12 +655,64 @@ async function importPlan(){
     const url = URL.createObjectURL(new Blob([json], {type:'application/json'}));
     out.innerHTML = (res.problems.length ? `<p style="color:#ff6961;font-weight:700">Needs fixing before it can run:</p><ul>${res.problems.map(p=>`<li>${esc(p)}</li>`).join('')}</ul>` : '<p style="color:var(--b0);font-weight:700">✓ Valid plan structure. Review thresholds and duties against the PDF, then add zones.</p>')
       + `<p><a class="ghost" href="${url}" download="${esc(res.draft.id||'city')}.json">⬇ Download draft config</a></p><pre>${esc(json)}</pre>`;
-    toast('Draft config ready','good');
+    toast('Draft config ready','good'); sparks($('#importBtn'));
   }catch(e){ out.innerHTML = `<div class="empty" style="color:#ff6961">Import failed: ${esc(e.message)}</div>`; }
   finally{ $('#importBtn').disabled = false; }
 }
 
-observeReveals(); bindTilt();
+
+/* ---------- round 2 effects ---------- */
+const FINE = matchMedia('(hover: hover) and (pointer: fine)').matches;
+// heat haze: animate the turbulence
+if(!REDUCED){ const t = $('#hazeT'); let k = 0; (function hz(){ k += .006; t.setAttribute('baseFrequency', `${(0.012+Math.sin(k)*.004).toFixed(4)} ${(0.04+Math.cos(k*1.3)*.012).toFixed(4)}`); requestAnimationFrame(hz); })(); }
+// bilingual headline
+(function(){ const words = ['running.', 'चालू है।'], el = $('#swap'); if(!el || REDUCED) return; let i = 0;
+  setInterval(() => { const sp = el.firstElementChild; sp.classList.add('out'); setTimeout(() => { i = (i+1)%words.length; sp.textContent = words[i]; sp.classList.toggle('hi', i===1); sp.classList.remove('out'); }, 450); }, 3600); })();
+// cursor spotlight + parallax
+if(FINE && !REDUCED){
+  const spot = $('#spot');
+  addEventListener('mousemove', e => { spot.style.opacity = 1; spot.style.transform = `translate(${e.clientX}px,${e.clientY}px)`; }, {passive:true});
+  document.addEventListener('mouseleave', () => spot.style.opacity = 0);
+}
+if(!REDUCED) addEventListener('scroll', () => { const y = scrollY; if(y > innerHeight) return;
+  $('.orb-wrap').style.translate = `0 ${y*.18}px`; $('#embers').style.translate = `0 ${y*.35}px`; $('.hero h1').style.translate = `0 ${y*.06}px`; }, {passive:true});
+// magnetic buttons + ripples
+function bindButtons(root=document){
+  root.querySelectorAll('.primary:not([data-m]),.ghost:not([data-m])').forEach(b => {
+    b.dataset.m = 1;
+    if(FINE && !REDUCED){
+      b.addEventListener('mousemove', e => { const r = b.getBoundingClientRect(); b.style.transform = `translate(${(e.clientX-r.left-r.width/2)*.18}px,${(e.clientY-r.top-r.height/2)*.25}px)`; });
+      b.addEventListener('mouseleave', () => b.style.transform = '');
+    }
+    b.addEventListener('click', e => { if(REDUCED) return; const r = b.getBoundingClientRect(), d = Math.max(r.width, r.height), x = document.createElement('span');
+      x.className = 'ripple'; x.style.cssText = `width:${d}px;height:${d}px;left:${e.clientX-r.left-d/2}px;top:${e.clientY-r.top-d/2}px`; b.append(x); setTimeout(() => x.remove(), 650); });
+  });
+}
+// spark burst
+function sparks(el, n=26){
+  if(REDUCED || !el) return; const r = el.getBoundingClientRect(), cx = r.left+r.width/2, cy = r.top+r.height/2;
+  for(let i=0;i<n;i++){ const s = document.createElement('span'); s.className = 'spark'; document.body.append(s);
+    const a = Math.random()*Math.PI*2, v = 60+Math.random()*120, hue = 20+Math.random()*30;
+    s.style.background = `hsl(${hue},100%,60%)`;
+    s.animate([{transform:`translate(${cx}px,${cy}px) scale(1)`,opacity:1},{transform:`translate(${cx+Math.cos(a)*v}px,${cy+Math.sin(a)*v+40}px) scale(.2)`,opacity:0}],{duration:700+Math.random()*500,easing:'cubic-bezier(.2,.8,.2,1)'}).onfinish = () => s.remove(); }
+}
+// live ticker
+function renderTicker(){
+  const s = state?.snapshot, c = CITIES[city()], bc = BAND_C(); if(!s){ $('#ticker').innerHTML = ''; return; }
+  const items = s.zones.filter(z=>z.available).sort((a,b)=>b.peak_wbgt-a.peak_wbgt).map(zr => { const z = c.zones.find(x=>x.id===zr.zone), b = BANDS[zr.band];
+    return `<span class="it"><i style="color:${bc[zr.band]};background:${bc[zr.band]}"></i>${esc(z.name)} <span class="hi" style="color:var(--muted)">${esc(z.name_hi)}</span> <b>${zr.peak_wbgt}°</b> <span style="color:var(--muted)">${esc(b.label)}${zr.start?` · ${zr.start}–${zr.end}`:''}</span></span>`; }).join('');
+  $('#ticker').innerHTML = items + items;  // doubled for a seamless loop
+}
+// map heat field
+function heatField(){
+  const s = state?.snapshot, c = CITIES[city()], bc = BAND_C(); if(!s || !layer) return;
+  s.zones.forEach((zr, i) => { if(!zr.available) return; const z = c.zones.find(x=>x.id===zr.zone);
+    L.circle([z.lat, z.lon], {radius:2500+zr.band*1100, stroke:false, fillColor:bc[zr.band], fillOpacity:.22, interactive:false, className:'heatblob'}).addTo(layer)
+      .getElement()?.style.setProperty('animation-delay', `${(i%5)*.4}s`);
+  });
+}
+
+observeReveals(); bindTilt(); bindButtons();
 init().catch(e => toast('Failed to load: '+e.message,'bad'));
 </script>
 </body>
