@@ -1,7 +1,9 @@
 """Open-Meteo client (forecast + historical archive). Data: CC-BY 4.0, open-meteo.com."""
 from __future__ import annotations
 
+import base64
 import json
+import zlib
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -78,3 +80,27 @@ def serialise(series: dict) -> dict:
 
 def deserialise(data: dict) -> dict:
     return {z: [{**r, "time": datetime.fromisoformat(r["time"])} for r in rows] for z, rows in data.items()}
+
+
+FIELDS = ("temp", "rh", "wind", "sw", "direct", "p")
+
+
+def pack(series: dict) -> str:
+    """Compact, compressed form for caching (a month of hourly data for 14 zones is ~150 KB)."""
+    out = {}
+    for z, rows in series.items():
+        out[z] = {"t0": rows[0]["time"].isoformat() if rows else None,
+                  **{f: [None if r[f] is None else round(r[f], 1) for r in rows] for f in FIELDS}}
+    raw = json.dumps(out, separators=(",", ":")).encode()
+    return base64.b64encode(zlib.compress(raw, 9)).decode()
+
+
+def unpack(blob: str) -> dict:
+    from datetime import timedelta
+    data = json.loads(zlib.decompress(base64.b64decode(blob)))
+    series = {}
+    for z, cols in data.items():
+        t0 = datetime.fromisoformat(cols["t0"]) if cols["t0"] else None
+        n = len(cols["temp"])
+        series[z] = [{"time": t0 + timedelta(hours=i), **{f: cols[f][i] for f in FIELDS}} for i in range(n)]
+    return series

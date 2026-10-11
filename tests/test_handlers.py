@@ -92,7 +92,7 @@ def test_replay_endpoint_uses_cached_archive(monkeypatch):
     series = {z["id"]: synthetic_day(day="2024-05-28", tmax=47.5, tmin=34) for z in city["zones"]}
     from heatplan import replay, weather
     win = city["replay"]
-    st.put("CACHE", f"archive#delhi#{win['start']}#{win['end']}", weather.serialise(series))
+    st.put("CACHE", f"archive#delhi#{win['start']}#{win['end']}", {"blob": weather.pack(series)})
     monkeypatch.setattr(replay, "FIXTURE_DIR", "/nonexistent")
     res = api.route("POST", "/api/replay", {}, {"city": "delhi", "date": "2024-05-28", "token": "t0k", "notify": False}, st)
     snap = json.loads(res["body"])["snapshot"]

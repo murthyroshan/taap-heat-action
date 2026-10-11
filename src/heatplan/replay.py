@@ -6,7 +6,6 @@ measure forecast skill, and reanalysis runs below station peaks.
 """
 from __future__ import annotations
 
-import json
 import os
 
 from . import weather
@@ -20,17 +19,17 @@ def archive_series(st, city_id: str) -> dict:
     """Hourly reanalysis for the city's replay window: bundled file -> cache -> Open-Meteo."""
     city = load_city(city_id)
     win = city["replay"]
-    bundled = os.path.join(FIXTURE_DIR, f"{city_id}.json")
+    bundled = os.path.join(FIXTURE_DIR, f"{city_id}.txt")
     if os.path.exists(bundled):
         with open(bundled, encoding="utf-8") as fh:
-            return weather.deserialise(json.load(fh))
+            return weather.unpack(fh.read())
     key = f"archive#{city_id}#{win['start']}#{win['end']}"
     cached = st.get("CACHE", key)
     if cached:
-        return weather.deserialise(cached)
+        return weather.unpack(cached["blob"])
     raw = weather.fetch_archive_raw(city["zones"], win["start"], win["end"])
     series = weather.parse(raw, city["zones"])
-    st.put("CACHE", key, weather.serialise(series))
+    st.put("CACHE", key, {"blob": weather.pack(series)})
     return series
 
 

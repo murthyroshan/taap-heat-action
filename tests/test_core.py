@@ -60,6 +60,18 @@ def test_live_forecast_fixture_parses():
     assert narela["available"] and len(narela["hourly"]) == 24
     # Roundtrip used by the cache
     assert weather.deserialise(weather.serialise(series))["narela"][0]["time"] == series["narela"][0]["time"]
+    back = weather.unpack(weather.pack(series))
+    assert back["narela"][30]["time"] == series["narela"][30]["time"]
+    assert abs(back["narela"][30]["temp"] - series["narela"][30]["temp"]) <= 0.05
+
+
+def test_month_of_city_data_fits_a_dynamodb_item():
+    city = plan.load_city("delhi")
+    rows = []
+    for d in range(37):
+        rows += synthetic_day(day=f"2024-05-{1 + d % 28:02d}")[12:36]
+    blob = weather.pack({z["id"]: rows for z in city["zones"]})
+    assert len(blob) < 350_000
 
 
 def _seed(st):

@@ -1,0 +1,156 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: Taap - a city's Heat Action Plan, running and accountable.
+
+Parameters:
+  TelegramToken:
+    Type: String
+    NoEcho: true
+    Default: ""
+    Description: Bot token from @BotFather (leave empty to run without Telegram).
+  TelegramSecret:
+    Type: String
+    NoEcho: true
+    Default: ""
+    Description: Random string; Telegram sends it back on every webhook call.
+  AdminToken:
+    Type: String
+    NoEcho: true
+    Description: Needed to run replays / manual ticks from the dashboard.
+  OfficerCode:
+    Type: String
+    NoEcho: true
+    Description: Code officers send to the bot ("/officer <code>") to register.
+  ModelId:
+    Type: String
+    Default: apac.amazon.nova-lite-v1:0
+    Description: Bedrock model or inference profile for the officer assistant.
+  StrandsLayerVersion:
+    Type: Number
+    Default: 2
+    Description: Version of the public Strands Agents Lambda layer (2 = strands-agents 1.40.0).
+  Cities:
+    Type: String
+    Default: delhi,ahmedabad
+  VoiceEnabled:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+
+Globals:
+  Function:
+    Runtime: python3.12
+    Architectures: [arm64]
+    CodeUri: src/
+    Timeout: 30
+    MemorySize: 256
+    LoggingConfig:
+      LogFormat: Text
+    Environment:
+      Variables:
+        TABLE_NAME: !Ref Table
+        TELEGRAM_TOKEN: !Ref TelegramToken
+        CITIES: !Ref Cities
+        VOICE_ENABLED: !Ref VoiceEnabled
+
+Resources:
+  Table:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - {AttributeName: pk, AttributeType: S}
+        - {AttributeName: sk, AttributeType: S}
+      KeySchema:
+        - {AttributeName: pk, KeyType: HASH}
+        - {AttributeName: sk, KeyType: RANGE}
+      # Provisioned mode stays inside the always-free tier (25 RCU / 25 WCU).
+      ProvisionedThroughput: {ReadCapacityUnits: 5, WriteCapacityUnits: 5}
+
+  TickFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: Hourly - forecast -> WBGT -> plan actions -> alerts
+      Handler: handlers.tick.handler
+      Timeout: 180
+      MemorySize: 512
+      Policies:
+        - DynamoDBCrudPolicy: {TableName: !Ref Table}
+        - Statement:
+            - {Effect: Allow, Action: polly:SynthesizeSpeech, Resource: "*"}
+      Events:
+        Hourly:
+          Type: ScheduleV2
+          Properties:
+            ScheduleExpression: cron(5 * * * ? *)
+            ScheduleExpressionTimezone: Asia/Kolkata
+            RetryPolicy: {MaximumRetryAttempts: 1}
+
+  BotFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: Telegram webhook - workers and officers
+      Handler: handlers.bot.handler
+      Timeout: 60
+      Environment:
+        Variables:
+          TELEGRAM_SECRET: !Ref TelegramSecret
+          OFFICER_CODE: !Ref OfficerCode
+          AGENT_FUNCTION: !Ref AgentFunction
+      FunctionUrlConfig:
+        AuthType: NONE
+      Policies:
+        - DynamoDBCrudPolicy: {TableName: !Ref Table}
+        - LambdaInvokePolicy: {FunctionName: !Ref AgentFunction}
+        - Statement:
+            - {Effect: Allow, Action: polly:SynthesizeSpeech, Resource: "*"}
+
+  ApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: Public dashboard, JSON API, CAP feed, posters, replay
+      Handler: handlers.api.handler
+      Timeout: 120
+      MemorySize: 512
+      Environment:
+        Variables:
+          ADMIN_TOKEN: !Ref AdminToken
+          AGENT_FUNCTION: !Ref AgentFunction
+      FunctionUrlConfig:
+        AuthType: NONE
+      Policies:
+        - DynamoDBCrudPolicy: {TableName: !Ref Table}
+        - LambdaInvokePolicy: {FunctionName: !Ref AgentFunction}
+        - Statement:
+            - {Effect: Allow, Action: polly:SynthesizeSpeech, Resource: "*"}
+
+  AgentFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: Officer plan assistant - Strands agent on Amazon Bedrock
+      Handler: handlers.agent.handler
+      Timeout: 90
+      MemorySize: 512
+      Layers:
+        - !Sub arn:aws:lambda:${AWS::Region}:856699698935:layer:strands-agents-py3_12-aarch64:${StrandsLayerVersion}
+      Environment:
+        Variables:
+          MODEL_ID: !Ref ModelId
+      Policies:
+        - DynamoDBReadPolicy: {TableName: !Ref Table}
+        - Statement:
+            - Effect: Allow
+              Action: [bedrock:InvokeModel, bedrock:InvokeModelWithResponseStream]
+              Resource: "*"
+            - Effect: Allow  # first-time use of Marketplace-listed models
+              Action: [aws-marketplace:ViewSubscriptions, aws-marketplace:Subscribe]
+              Resource: "*"
+
+Outputs:
+  DashboardUrl:
+    Description: Public dashboard + API
+    Value: !GetAtt ApiFunctionUrl.FunctionUrl
+  BotWebhookUrl:
+    Description: Register this with Telegram (scripts/set_webhook.sh)
+    Value: !GetAtt BotFunctionUrl.FunctionUrl
+  TableName:
+    Value: !Ref Table
