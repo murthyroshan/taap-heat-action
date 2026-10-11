@@ -39,7 +39,7 @@ class Notifier:
         alert_pk = f"ALERT#{mode}#{snap['date']}"
         for u in self._users(city["id"], "worker"):
             zr = next((z for z in snap["zones"] if z["zone"] == u.get("zone")), None)
-            if not zr or not zr.get("available") or zr["band"] < 1:
+            if not zr or not zr.get("available") or zr["band"] < city.get("alert_min_band", 1):
                 continue
             key = f"{u['sk']}#{zr['zone']}"
             prev = self.st.get(alert_pk, key) or {"band": 0}

@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Taap — Heat Action Plan, running</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E🔥%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+:root{--bg:#f6f5f2;--card:#fff;--ink:#17181a;--muted:#5d6168;--line:#e3e1dc;--accent:#c2410c;
+ --b0:#2e7d32;--b1:#d4a106;--b2:#ef6c00;--b3:#c62828;--b4:#6a1b9a;
+ --t-green:#2e7d32;--t-yellow:#d4a106;--t-orange:#ef6c00;--t-red:#c62828}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121315;--card:#1c1d20;--ink:#ecebe8;--muted:#a3a6ad;--line:#2d2f33}}
+:root[data-theme="dark"]{--bg:#121315;--card:#1c1d20;--ink:#ecebe8;--muted:#a3a6ad;--line:#2d2f33}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans Devanagari",sans-serif}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--line);background:var(--card)}
+.brand{display:flex;align-items:baseline;gap:10px}.brand b{font-size:22px;color:var(--accent)}.brand span{color:var(--muted)}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+select,input,button{font:inherit;padding:7px 10px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink)}
+button{cursor:pointer}button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}.seg button{border:0;border-radius:0}.seg button.on{background:var(--ink);color:var(--bg)}
+main{max-width:1280px;margin:0 auto;padding:16px;display:grid;gap:16px;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr)}
+@media (max-width:900px){main{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
+.card h2{font-size:14px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 0 10px}
+.kpis{grid-column:1/-1;display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.kpi .v{font-size:26px;font-weight:700}.kpi .l{color:var(--muted);font-size:13px}
+.pill{display:inline-block;padding:2px 9px;border-radius:99px;color:#fff;font-size:12px;font-weight:700;text-transform:uppercase}
+#map{height:430px;border-radius:10px}
+.tiles{filter:saturate(.35) contrast(.95)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .tiles{filter:invert(1) hue-rotate(180deg) saturate(.3) brightness(.9)}}
+.zl{background:transparent;border:0;box-shadow:none;font-weight:700;font-size:11px;color:var(--ink);text-shadow:0 0 3px var(--card),0 0 3px var(--card)}
+.zl::before{display:none}
+.hours{display:grid;grid-template-columns:repeat(24,1fr);gap:2px;margin:8px 0}.hours div{height:34px;border-radius:3px;position:relative}
+.hours div span{position:absolute;bottom:-17px;left:0;font-size:10px;color:var(--muted)}
+table{width:100%;border-collapse:collapse;font-size:13.5px}th,td{text-align:left;padding:7px 6px;border-bottom:1px solid var(--line);vertical-align:top}th{color:var(--muted);font-weight:600}
+.done{color:var(--b0);font-weight:700}.open{color:var(--b3);font-weight:700}.muted{color:var(--muted)}.small{font-size:12.5px}
+.scroll{max-height:360px;overflow:auto}
+.bt{display:flex;gap:2px;align-items:flex-end;height:90px;margin:8px 0}.bt div{flex:1;border-radius:2px 2px 0 0}
+.nums{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}.nums b{font-size:22px;display:block}
+#answer{white-space:pre-wrap;margin-top:8px}
+.note{font-size:12.5px;color:var(--muted)}
+a{color:var(--accent)}
+.legend{display:flex;flex-wrap:wrap;gap:10px;font-size:12px;color:var(--muted);margin-top:8px}.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px}
+.full{grid-column:1/-1}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><b>🔥 Taap</b><span>Heat Action Plan, running — and accountable</span></div>
+  <div class="controls">
+    <select id="city" aria-label="City"></select>
+    <div class="seg" role="tablist"><button id="mLive" class="on">Live</button><button id="mReplay">Replay</button></div>
+    <span id="replayBox" hidden><input type="date" id="rdate" aria-label="Replay date"> <button class="primary" id="runReplay">▶ Run replay</button></span>
+    <button id="settings" title="Admin token">⚙︎</button>
+  </div>
+</header>
+<main>
+  <section class="kpis">
+    <div class="card kpi"><div class="l">Official plan tier (from Tmax)</div><div class="v" id="kTier">–</div></div>
+    <div class="card kpi"><div class="l">Worst worker band (from WBGT)</div><div class="v" id="kBand">–</div></div>
+    <div class="card kpi"><div class="l">Plan actions done</div><div class="v" id="kActs">–</div></div>
+    <div class="card kpi"><div class="l">Open worker reports</div><div class="v" id="kReps">–</div></div>
+  </section>
+
+  <section class="card">
+    <h2 id="mapTitle">Zones</h2>
+    <div id="map"></div>
+    <div class="legend" id="legend"></div>
+  </section>
+
+  <section class="card">
+    <h2>Zone detail</h2>
+    <div id="zone"><p class="muted">Select a zone on the map.</p></div>
+  </section>
+
+  <section class="card full">
+    <h2>Plan vs reality — action log</h2>
+    <div class="scroll"><table><thead><tr><th>Zone</th><th>Action</th><th>Owner</th><th>Status</th><th>Plan reference</th></tr></thead><tbody id="acts"></tbody></table></div>
+  </section>
+
+  <section class="card">
+    <h2>Worker reports (today)</h2>
+    <div class="scroll"><table><thead><tr><th>Time</th><th>Zone</th><th>Report</th><th>Status</th></tr></thead><tbody id="reps"></tbody></table></div>
+  </section>
+
+  <section class="card">
+    <h2>Ask the plan assistant</h2>
+    <form id="askForm"><input id="q" style="width:100%" maxlength="500" placeholder="Which zones still have open actions, and who owns them?"><div style="margin-top:8px"><button class="primary">Ask</button> <span class="small muted">Strands agent on Amazon Bedrock · read-only tools</span></div></form>
+    <div id="answer" class="small"></div>
+  </section>
+
+  <section class="card full" id="btCard">
+    <h2>Backtest — what the plan would have triggered</h2>
+    <div id="bt"><p class="muted">Loading…</p></div>
+  </section>
+
+  <section class="card full note" id="honesty"></section>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+const BAND_C = ['--b0','--b1','--b2','--b3','--b4'].map(v => getComputedStyle(document.documentElement).getPropertyValue(v).trim());
+const cssv = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const TIER_C = {green:cssv('--t-green'),yellow:cssv('--t-yellow'),orange:cssv('--t-orange'),red:cssv('--t-red')};
+const REP = {water:'🚱 No drinking water',shade:'⛱️ No shade',work:'⛔ Work not stopped',ill:'🤒 Someone unwell'};
+let CITIES = {}, BANDS = [], mode = 'live', state = null, map, layer, selected = null;
+const store = {get(k){try{return localStorage.getItem(k)}catch(e){return null}}, set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pill = (txt, col) => `<span class="pill" style="background:${col}">${esc(txt)}</span>`;
+const city = () => $('#city').value;
+const fmtTime = ts => ts ? new Date(ts*1000).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Kolkata'}) : '';
+
+async function api(path, body){
+  const r = await fetch(path, body ? {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)} : {});
+  const j = await r.json().catch(()=>({error:'bad response'}));
+  if(!r.ok) throw new Error(j.error || r.status);
+  return j;
+}
+
+async function init(){
+  const d = await api('/api/cities');
+  BANDS = d.bands;
+  d.cities.forEach(c => { CITIES[c.id] = c; $('#city').insertAdjacentHTML('beforeend', `<option value="${c.id}">${esc(c.name)}</option>`); });
+  const saved = store.get('taap.city'); $('#city').value = (saved && CITIES[saved]) ? saved : (CITIES.delhi ? 'delhi' : d.cities[0].id);
+  $('#legend').innerHTML = BANDS.map(b => `<span><i style="background:${BAND_C[b.band]}"></i>${b.band}: ${esc(b.label)}${b.band&&b.band<4?` (${b.work}/${b.rest} min)`:''}</span>`).join('');
+  map = L.map('map', {scrollWheelZoom:false});
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors', maxZoom:18, className:'tiles'}).addTo(map);
+  layer = L.layerGroup().addTo(map);
+  $('#city').onchange = () => { store.set('taap.city', city()); selected = null; setupCity(); };
+  $('#mLive').onclick = () => setMode('live'); $('#mReplay').onclick = () => setMode('replay');
+  $('#runReplay').onclick = runReplay;
+  $('#settings').onclick = () => { const t = prompt('Admin token (needed to run a replay):', store.get('taap.token')||''); if(t!==null) store.set('taap.token', t); };
+  $('#askForm').onsubmit = ask;
+  setupCity();
+  setInterval(() => mode==='live' && load(), 60000);
+}
+
+function setupCity(){
+  const c = CITIES[city()];
+  map.fitBounds(L.latLngBounds(c.zones.map(z => [z.lat, z.lon])).pad(0.25));
+  $('#rdate').min = c.replay.start; $('#rdate').max = c.replay.end; $('#rdate').value = c.replay.default;
+  $('#honesty').innerHTML = `<b>How to read this.</b> ${c.notes.map(esc).join(' ')} Worker bands use hourly outdoor WBGT (Liljegren model: temperature, humidity, wind, sun) against ACGIH screening limits for heavy, acclimatised work; guidance, not medical advice. Weather: <a href="https://open-meteo.com">Open-Meteo</a> (CC-BY 4.0) — modelled values, not station readings. Replay uses ERA5 reanalysis, which runs below station peaks. Feeds: <a href="/cap.xml?city=${c.id}&mode=${mode}">CAP 1.2 XML</a> (the format India's SACHET system ingests).`;
+  load(); loadBacktest();
+}
+
+function setMode(m){ mode = m; $('#mLive').classList.toggle('on', m==='live'); $('#mReplay').classList.toggle('on', m==='replay'); $('#replayBox').hidden = m!=='replay'; load(); }
+
+async function runReplay(){
+  const token = store.get('taap.token');
+  if(!token){ alert('Set the admin token first (⚙︎).'); return; }
+  $('#runReplay').disabled = true; $('#runReplay').textContent = 'Running…';
+  try{ await api('/api/replay', {city:city(), date:$('#rdate').value, token, notify:true}); await load(); }
+  catch(e){ alert('Replay failed: '+e.message); }
+  finally{ $('#runReplay').disabled = false; $('#runReplay').textContent = '▶ Run replay'; }
+}
+
+async function load(){
+  const qs = new URLSearchParams({city:city(), mode}); if(mode==='replay') qs.set('date', $('#rdate').value);
+  try{ state = await api('/api/state?'+qs); }catch(e){ state = {snapshot:null,actions:[],reports:[]}; }
+  render();
+}
+
+function render(){
+  const s = state.snapshot, c = CITIES[city()];
+  layer.clearLayers();
+  $('#mapTitle').textContent = s ? `${c.name} · ${s.date}${mode==='replay'?' · REPLAY':''}` : `${c.name} · no data yet`;
+  $('#kTier').innerHTML = s ? pill(s.tier, TIER_C[s.tier]) : '–';
+  $('#kBand').innerHTML = s ? pill(`${s.max_band} · ${BANDS[s.max_band].label}`, BAND_C[s.max_band]) : '–';
+  const done = state.actions.filter(a => a.status==='done').length;
+  $('#kActs').textContent = state.actions.length ? `${done} / ${state.actions.length}` : '0';
+  $('#kReps').textContent = state.reports.filter(r => r.status!=='resolved').length;
+  if(s) s.zones.forEach(zr => {
+    if(!zr.available) return;
+    const z = c.zones.find(x => x.id===zr.zone);
+    const m = L.circleMarker([z.lat, z.lon], {radius:16, color:TIER_C[zr.tier], weight:4, fillColor:BAND_C[zr.band], fillOpacity:.85});
+    m.bindTooltip(`<b>${esc(z.name)}</b><br>WBGT ${zr.peak_wbgt}°C · band ${zr.band}<br>Tmax ${zr.tmax}°C · ${zr.tier}${zr.hot_night?' · hot night':''}`);
+    m.on('click', () => { selected = zr.zone; renderZone(); });
+    m.addTo(layer);
+    L.tooltip({permanent:true, direction:'bottom', offset:[0,14], className:'zl', interactive:false}).setLatLng([z.lat, z.lon]).setContent(esc(z.name)).addTo(layer);
+  });
+  if(s && !selected){ selected = [...s.zones].filter(z=>z.available).sort((a,b)=>b.peak_wbgt-a.peak_wbgt)[0]?.zone; }
+  renderZone();
+  $('#acts').innerHTML = state.actions.length ? state.actions.map(a => `<tr><td>${esc(a.zone_name)}</td><td>${esc(a.text_rendered)}</td><td>${esc(c.roles[a.role]||a.role)}</td>
+    <td>${a.status==='done'?`<span class="done">✅ Done</span><br><span class="small muted">${esc(a.done_by)} · ${fmtTime(a.done_at)}</span>`:'<span class="open">● Open</span>'}</td><td class="small muted">${esc(a.ref)}</td></tr>`).join('')
+    : `<tr><td colspan="5" class="muted">${s && s.tier==='green' ? 'Plan not active today (green tier): departments are not tasked. Workers still get WBGT work–rest guidance.' : 'No plan actions triggered.'}</td></tr>`;
+  $('#reps').innerHTML = state.reports.length ? state.reports.map(r => `<tr><td>${esc(r.time)}</td><td>${esc(r.zone_name)}</td><td>${REP[r.type]||esc(r.type)}</td><td>${r.status==='resolved'?`<span class="done">Resolved</span> <span class="small muted">${esc(r.resolved_by)}</span>`:'<span class="open">Open</span>'}</td></tr>`).join('')
+    : `<tr><td colspan="4" class="muted">No reports today.</td></tr>`;
+}
+
+function renderZone(){
+  const s = state?.snapshot; const c = CITIES[city()];
+  const zr = s?.zones.find(z => z.zone===selected);
+  if(!zr || !zr.available){ $('#zone').innerHTML = '<p class="muted">Select a zone on the map.</p>'; return; }
+  const z = c.zones.find(x => x.id===zr.zone), b = BANDS[zr.band];
+  const rule = zr.band===0 ? 'Normal work; keep drinking water.' : zr.band>=4 ? `Stop heavy work ${zr.start}–${zr.end} IST.` : `Heavy work ${zr.start}–${zr.end} IST: ${b.work} min work / ${b.rest} min rest each hour.`;
+  const qs = new URLSearchParams({city:city(), mode, zone:zr.zone, date:s.date});
+  $('#zone').innerHTML = `<h3 style="margin:0 0 4px">${esc(z.name)} <span class="muted small">${esc(z.name_hi)}</span></h3>
+    <div>${pill(zr.tier, TIER_C[zr.tier])} ${pill('band '+zr.band, BAND_C[zr.band])} ${zr.hot_night?pill('hot night '+zr.night_min+'°C','#37474f'):''}</div>
+    <p style="margin:10px 0"><b>${esc(rule)}</b></p>
+    <div class="small muted">Hourly WBGT (IST)</div>
+    <div class="hours">${zr.hourly.map(h => `<div title="${h.hour}:00 · ${h.temp}°C · ${h.rh}% RH · WBGT ${h.wbgt}°C" style="background:${BAND_C[h.band]};opacity:${.35+.65*Math.min(1,Math.max(0,(h.wbgt-18)/15))}">${h.hour%3===0?`<span>${h.hour}</span>`:''}</div>`).join('')}</div>
+    <p class="small" style="margin-top:22px">Peak WBGT <b>${zr.peak_wbgt}°C</b> at ${String(zr.peak_hour).padStart(2,'0')}:00 · Tmax ${zr.tmax}°C${zr.night_min!=null?` · night low ${zr.night_min}°C`:''}</p>
+    <p><a href="/poster?${qs}" target="_blank">🖨️ Printable Hindi poster for labour chowks</a></p>`;
+}
+
+async function loadBacktest(){
+  $('#bt').innerHTML = '<p class="muted">Loading…</p>';
+  try{
+    const b = await api('/api/backtest?city='+city()); const s = b.summary;
+    const maxT = Math.max(...b.days.map(d=>d.tmax)), minT = Math.min(...b.days.map(d=>d.tmax));
+    $('#bt').innerHTML = `<p class="small">Replaying <b>${b.window.start} → ${b.window.end}</b> through the plan. ${esc(b.reference_event.text||'')}</p>
+      <div class="nums">
+        <div><b>${s.first_worker_warning||'–'}</b><span class="small muted">first worker warning (band ≥3)${s.lead_days_before_reference!=null?` · ${s.lead_days_before_reference} days before the reference peak`:''}${s.warning_from_window_start?' (already active at window start)':''}</span></div>
+        <div><b>${s.days_with_band3_plus}</b><span class="small muted">days needing work–rest limits</span></div>
+        <div><b>${s.zone_days_band3_plus}</b><span class="small muted">zone-days of band ≥3 alerts</span></div>
+        <div><b>${s.days_orange_or_red}</b><span class="small muted">days at orange/red tier</span></div>
+        <div><b>${s.hot_night_zone_days}</b><span class="small muted">zone-days escalated by hot nights</span></div>
+        <div><b>${s.actions_triggered}</b><span class="small muted">plan actions that would have been assigned</span></div>
+      </div>
+      <div class="bt">${b.days.map(d => `<div title="${d.date}: Tmax ${d.tmax}°C · WBGT ${d.peak_wbgt}°C · band ${d.max_band} · ${d.tier}" style="height:${15+85*(d.tmax-minT)/Math.max(1,maxT-minT)}%;background:${BAND_C[d.max_band]};${d.date===b.reference_event.date?'outline:2px solid var(--ink)':''}"></div>`).join('')}</div>
+      <p class="note">Bar height = modelled daily Tmax, colour = worst worker band; outlined = reference day. ${esc(b.caveat)}</p>`;
+  }catch(e){ $('#bt').innerHTML = `<p class="muted">Backtest unavailable: ${esc(e.message)}</p>`; }
+}
+
+async function ask(e){
+  e.preventDefault(); const q = $('#q').value.trim(); if(!q) return;
+  $('#answer').textContent = 'Thinking…';
+  try{ const r = await api('/api/ask', {question:q, city:city()}); $('#answer').textContent = r.answer; }
+  catch(err){ $('#answer').textContent = 'Assistant unavailable: '+err.message; }
+}
+init().catch(e => document.body.insertAdjacentHTML('afterbegin', `<p style="padding:16px">Failed to load: ${esc(e.message)}</p>`));
+</script>
+</body>
+</html>

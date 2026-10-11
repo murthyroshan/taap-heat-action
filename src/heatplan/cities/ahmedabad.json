@@ -7,7 +7,8 @@
   "notes": [
     "Zones are the seven AMC administrative zones, one forecast point each (approximate centroids).",
     "Tier thresholds are Ahmedabad's forecast-Tmax alert levels: yellow 41-42.9 C, orange 43-44.9 C, red >= 45 C (Hess et al. 2018; AMC HAP).",
-    "The hot-night threshold is illustrative and should be set by the city."
+    "The hot-night threshold is illustrative and should be set by the city.",
+    "To avoid alert fatigue, departments are tasked only once the plan is active (yellow tier or above); workers get a WBGT push alert from band 2 on any day, and band 1 on request."
   ],
   "tiers": {
     "yellow": 41.0,
@@ -77,7 +78,7 @@
       "id": "water",
       "role": "water",
       "when": {
-        "band": 2
+        "band": 3
       },
       "text": "Open drinking-water points at bus stops, labour nakas and markets in {zone}, {start}-{end}.",
       "ref": "Ahmedabad HAP: drinking water at public places"
@@ -86,7 +87,7 @@
       "id": "break",
       "role": "labour",
       "when": {
-        "band": 3
+        "band": 4
       },
       "text": "Ask builders in {zone} to shift heavy work out of {start}-{end}.",
       "ref": "Ahmedabad HAP: changes to outdoor work schedules"
@@ -113,7 +114,7 @@
       "id": "mobile",
       "role": "disaster",
       "when": {
-        "band": 4
+        "tier": "red"
       },
       "text": "Send outreach teams and 108 ambulances on standby to hotspots in {zone}, {start}-{end}.",
       "ref": "Ahmedabad HAP: red alert emergency response"
@@ -128,5 +129,7 @@
     "start": "2024-05-10",
     "end": "2024-06-10",
     "default": "2024-05-23"
-  }
+  },
+  "alert_min_band": 2,
+  "actions_min_tier": "yellow"
 }

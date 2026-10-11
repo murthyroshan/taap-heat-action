@@ -139,8 +139,8 @@ def city_risk(city: dict, series: dict, day: str) -> dict:
 
 def triggered_actions(city: dict, zr: dict) -> list[dict]:
     """Plan actions whose trigger condition is met in this zone."""
-    if not zr.get("available"):
-        return []
+    if not zr.get("available") or not tier_at_least(zr["tier"], city.get("actions_min_tier", "yellow")):
+        return []  # the plan is not active: workers still get WBGT guidance, departments are not tasked
     out = []
     for a in city["actions"]:
         cond = a["when"]

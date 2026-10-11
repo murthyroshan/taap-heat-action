@@ -7,25 +7,114 @@
   "notes": [
     "Zones are named localities ~8-12 km apart, matching the ~9 km resolution of the forecast models. They are not MCD wards.",
     "Tier thresholds follow IMD heatwave criteria for the plains (max >= 40 C considered; heatwave >= 45 C; severe heatwave >= 47 C). Delhi's HAP uses IMD colour-coded warnings; replace these with IMD's issued colour where available.",
-    "The hot-night threshold is illustrative and should be set by the city."
+    "The hot-night threshold is illustrative and should be set by the city.",
+    "To avoid alert fatigue, departments are tasked only once the plan is active (yellow tier or above); workers get a WBGT push alert from band 2 on any day, and band 1 on request."
   ],
-  "tiers": {"yellow": 40.0, "orange": 45.0, "red": 47.0},
+  "tiers": {
+    "yellow": 40.0,
+    "orange": 45.0,
+    "red": 47.0
+  },
   "hot_night_c": 30.0,
   "zones": [
-    {"id": "narela", "name": "Narela", "name_hi": "नरेला", "lat": 28.853, "lon": 77.093},
-    {"id": "mungeshpur", "name": "Mungeshpur-Bawana", "name_hi": "मुंगेशपुर-बवाना", "lat": 28.815, "lon": 77.040},
-    {"id": "rohini", "name": "Rohini", "name_hi": "रोहिणी", "lat": 28.736, "lon": 77.113},
-    {"id": "civillines", "name": "Civil Lines", "name_hi": "सिविल लाइंस", "lat": 28.681, "lon": 77.222},
-    {"id": "shahdara", "name": "Shahdara", "name_hi": "शाहदरा", "lat": 28.673, "lon": 77.289},
-    {"id": "karolbagh", "name": "Karol Bagh", "name_hi": "करोल बाग", "lat": 28.651, "lon": 77.190},
-    {"id": "newdelhi", "name": "New Delhi", "name_hi": "नई दिल्ली", "lat": 28.632, "lon": 77.219},
-    {"id": "janakpuri", "name": "Janakpuri", "name_hi": "जनकपुरी", "lat": 28.621, "lon": 77.081},
-    {"id": "najafgarh", "name": "Najafgarh", "name_hi": "नजफगढ़", "lat": 28.609, "lon": 76.980},
-    {"id": "dwarka", "name": "Dwarka", "name_hi": "द्वारका", "lat": 28.585, "lon": 77.046},
-    {"id": "mayurvihar", "name": "Mayur Vihar", "name_hi": "मयूर विहार", "lat": 28.607, "lon": 77.294},
-    {"id": "lajpatnagar", "name": "Lajpat Nagar", "name_hi": "लाजपत नगर", "lat": 28.570, "lon": 77.243},
-    {"id": "okhla", "name": "Okhla", "name_hi": "ओखला", "lat": 28.531, "lon": 77.271},
-    {"id": "mehrauli", "name": "Mehrauli", "name_hi": "महरौली", "lat": 28.521, "lon": 77.185}
+    {
+      "id": "narela",
+      "name": "Narela",
+      "name_hi": "नरेला",
+      "lat": 28.853,
+      "lon": 77.093
+    },
+    {
+      "id": "mungeshpur",
+      "name": "Mungeshpur-Bawana",
+      "name_hi": "मुंगेशपुर-बवाना",
+      "lat": 28.815,
+      "lon": 77.04
+    },
+    {
+      "id": "rohini",
+      "name": "Rohini",
+      "name_hi": "रोहिणी",
+      "lat": 28.736,
+      "lon": 77.113
+    },
+    {
+      "id": "civillines",
+      "name": "Civil Lines",
+      "name_hi": "सिविल लाइंस",
+      "lat": 28.681,
+      "lon": 77.222
+    },
+    {
+      "id": "shahdara",
+      "name": "Shahdara",
+      "name_hi": "शाहदरा",
+      "lat": 28.673,
+      "lon": 77.289
+    },
+    {
+      "id": "karolbagh",
+      "name": "Karol Bagh",
+      "name_hi": "करोल बाग",
+      "lat": 28.651,
+      "lon": 77.19
+    },
+    {
+      "id": "newdelhi",
+      "name": "New Delhi",
+      "name_hi": "नई दिल्ली",
+      "lat": 28.632,
+      "lon": 77.219
+    },
+    {
+      "id": "janakpuri",
+      "name": "Janakpuri",
+      "name_hi": "जनकपुरी",
+      "lat": 28.621,
+      "lon": 77.081
+    },
+    {
+      "id": "najafgarh",
+      "name": "Najafgarh",
+      "name_hi": "नजफगढ़",
+      "lat": 28.609,
+      "lon": 76.98
+    },
+    {
+      "id": "dwarka",
+      "name": "Dwarka",
+      "name_hi": "द्वारका",
+      "lat": 28.585,
+      "lon": 77.046
+    },
+    {
+      "id": "mayurvihar",
+      "name": "Mayur Vihar",
+      "name_hi": "मयूर विहार",
+      "lat": 28.607,
+      "lon": 77.294
+    },
+    {
+      "id": "lajpatnagar",
+      "name": "Lajpat Nagar",
+      "name_hi": "लाजपत नगर",
+      "lat": 28.57,
+      "lon": 77.243
+    },
+    {
+      "id": "okhla",
+      "name": "Okhla",
+      "name_hi": "ओखला",
+      "lat": 28.531,
+      "lon": 77.271
+    },
+    {
+      "id": "mehrauli",
+      "name": "Mehrauli",
+      "name_hi": "महरौली",
+      "lat": 28.521,
+      "lon": 77.185
+    }
   ],
   "roles": {
     "water": "Water supply (DJB)",
@@ -34,26 +123,62 @@
     "disaster": "District disaster management (DDMA)"
   },
   "actions": [
-    {"id": "water", "role": "water", "when": {"band": 2},
-     "text": "Set up drinking-water points at labour chowks and construction sites in {zone}, {start}-{end}.",
-     "ref": "Delhi HAP: drinking water at public places and worksites"},
-    {"id": "break", "role": "labour", "when": {"band": 3},
-     "text": "Enforce a paid work break at construction sites in {zone} during {start}-{end}.",
-     "ref": "Delhi LG order of 29 May 2024: paid 12-3 PM break at construction sites"},
-    {"id": "cool", "role": "disaster", "when": {"tier": "orange"},
-     "text": "Open a cooling centre / shaded rest area in {zone}, {start}-{end}, and publish its location.",
-     "ref": "Delhi HAP: cooling shelters at hotspots"},
-    {"id": "hosp", "role": "health", "when": {"tier": "orange"},
-     "text": "Alert heatstroke units serving {zone}; stock ORS, ice packs and IV fluids before {start}.",
-     "ref": "Delhi HAP: dedicated heatstroke units in hospitals"},
-    {"id": "mobile", "role": "disaster", "when": {"band": 4},
-     "text": "Deploy a mobile heat-relief unit to labour chowks in {zone}, {start}-{end}.",
-     "ref": "Delhi HAP 2026: DM order to deploy mobile heat-relief units"}
+    {
+      "id": "water",
+      "role": "water",
+      "when": {
+        "band": 3
+      },
+      "text": "Set up drinking-water points at labour chowks and construction sites in {zone}, {start}-{end}.",
+      "ref": "Delhi HAP: drinking water at public places and worksites"
+    },
+    {
+      "id": "break",
+      "role": "labour",
+      "when": {
+        "band": 4
+      },
+      "text": "Enforce a paid work break at construction sites in {zone} during {start}-{end}.",
+      "ref": "Delhi LG order of 29 May 2024: paid 12-3 PM break at construction sites"
+    },
+    {
+      "id": "cool",
+      "role": "disaster",
+      "when": {
+        "tier": "orange"
+      },
+      "text": "Open a cooling centre / shaded rest area in {zone}, {start}-{end}, and publish its location.",
+      "ref": "Delhi HAP: cooling shelters at hotspots"
+    },
+    {
+      "id": "hosp",
+      "role": "health",
+      "when": {
+        "tier": "orange"
+      },
+      "text": "Alert heatstroke units serving {zone}; stock ORS, ice packs and IV fluids before {start}.",
+      "ref": "Delhi HAP: dedicated heatstroke units in hospitals"
+    },
+    {
+      "id": "mobile",
+      "role": "disaster",
+      "when": {
+        "tier": "red"
+      },
+      "text": "Deploy a mobile heat-relief unit to labour chowks in {zone}, {start}-{end}.",
+      "ref": "Delhi HAP 2026: DM order to deploy mobile heat-relief units"
+    }
   ],
   "reference_event": {
     "date": "2024-05-28",
     "text": "IMD recorded 49.9 C at Mungeshpur and Narela on 28 May 2024 (the 52.9 C reading on 29 May was a sensor error).",
     "source": "https://internal.imd.gov.in/press_release/20240529_pr_3029.pdf"
   },
-  "replay": {"start": "2024-05-15", "end": "2024-06-20", "default": "2024-05-28"}
+  "replay": {
+    "start": "2024-05-15",
+    "end": "2024-06-20",
+    "default": "2024-05-28"
+  },
+  "alert_min_band": 2,
+  "actions_min_tier": "yellow"
 }
