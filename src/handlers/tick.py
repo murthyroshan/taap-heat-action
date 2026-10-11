@@ -17,7 +17,7 @@ def run_city(city_id: str, st=None, notify: bool = True) -> dict:
 
 
 def handler(event, context):
-    cities = [c for c in os.environ.get("CITIES", ",".join(list_cities())).split(",") if c]
+    cities = [c for c in (os.environ.get("CITIES") or ",".join(list_cities())).split(",") if c]
     results = []
     for c in cities:
         try:

@@ -18,7 +18,8 @@ from heatplan.telegram import Telegram
 from heatplan.wbgt import IST
 
 REPORT_COOLDOWN_S = 30 * 60
-WELCOME = "🔥 Taap — heat alerts / गर्मी चेतावनी\nभाषा चुनें / Choose language:"
+OFFICER_CODE_TRIES = 5  # wrong /officer codes per chat per hour
+WELCOME = "🔥 Taap: heat alerts / गर्मी चेतावनी\nभाषा चुनें / Choose language:"
 
 
 def _keyboard(lang):
@@ -43,6 +44,13 @@ class Bot:
         msg = update.get("message") or {}
         if "text" in msg:
             return self.on_text(msg)
+        if (msg.get("chat") or {}).get("id") is not None:  # voice note, photo, sticker...
+            user = store.get_user(self.st, msg["chat"]["id"]) or {}
+            hi = user.get("lang", "hi") == "hi"
+            if user.get("role") == "worker" and user.get("zone"):
+                return self.tg.send(msg["chat"]["id"], "कृपया नीचे दिए बटन दबाएँ। 👇" if hi else "Please use the buttons below. 👇",
+                                    keyboard=_keyboard(user.get("lang", "hi")))
+            return self.tg.send(msg["chat"]["id"], "Send /start to subscribe to heat alerts. / गर्मी चेतावनी के लिए /start भेजें।")
 
     def on_text(self, msg):
         chat = msg["chat"]["id"]
@@ -51,12 +59,22 @@ class Bot:
         name = (msg.get("from") or {}).get("first_name", "")
 
         if text.startswith("/start"):
+            if user.get("role") == "officer":
+                self.tg.send(chat, "You are registered as an officer. Choosing a language below switches this chat "
+                                   "to worker alerts; send /officer <code> to switch back.")
             self.tg.send(chat, WELCOME, buttons=[[{"text": "हिंदी", "callback_data": "l|hi"},
                                                    {"text": "English", "callback_data": "l|en"}]])
             return
         if text.startswith("/officer"):
             code = text.split(maxsplit=1)[1].strip() if " " in text else ""
-            if not os.environ.get("OFFICER_CODE") or code != os.environ["OFFICER_CODE"]:
+            tries_key = f"officer#{chat}#{store.now_ts() // 3600}"
+            tries = (self.st.get("RATE", tries_key) or {"n": 0})["n"]
+            if tries >= OFFICER_CODE_TRIES:
+                self.tg.send(chat, "Too many wrong codes. Try again in an hour.")
+                return
+            expected = os.environ.get("OFFICER_CODE", "")
+            if not expected or not hmac.compare_digest(code.encode(), expected.encode()):
+                self.st.put("RATE", tries_key, {"n": tries + 1})
                 self.tg.send(chat, "Officer code not recognised.")
                 return
             store.save_user(self.st, chat, {"role": "officer_pending", "name": name, "lang": "en"})
@@ -173,7 +191,7 @@ class Bot:
                 return self.tg.send(chat, "Only the responsible officer can mark this action done.")
             item = engine.mark_done(self.st, city_id, mode, day, zone, aid, user.get("name") or who)
             t = datetime.fromtimestamp(item["done_at"], timezone.utc).astimezone(IST).strftime("%H:%M")
-            self._mark_button(chat, mid, msg, cq.get("data"), f"✔️ {messages.action_label(aid)} — {item['done_by']} {t}")
+            self._mark_button(chat, mid, msg, cq.get("data"), f"✔️ {messages.action_label(aid)}, {item['done_by']} {t}")
         elif kind == "r" and len(parts) == 4:  # r|city|date|sk
             _, city_id, day, sk = parts
             pk = f"REP#{city_id}#{day}"
@@ -183,7 +201,7 @@ class Bot:
             if rep["status"] != "resolved":
                 rep.update(status="resolved", resolved_by=user.get("name") or who, resolved_at=store.now_ts())
                 self.st.put(pk, sk, rep)
-            self._mark_button(chat, mid, msg, cq.get("data"), f"✔️ Resolved — {rep['resolved_by']}")
+            self._mark_button(chat, mid, msg, cq.get("data"), f"✔️ Resolved by {rep['resolved_by']}")
 
     @staticmethod
     def _may_handle(user, city_id, role) -> bool:
@@ -230,10 +248,7 @@ class Bot:
         rep = {"type": rtype, "city": city["id"], "zone": zone["id"], "zone_name": zone["name"],
                "time": now.strftime("%H:%M"), "status": "open", "lang": lang}
         self.st.put(f"REP#{city['id']}#{day}", sk, rep)
-        n = engine.Notifier(self.st, self.tg)
-        for o in n.officers_for(city["id"], messages.REPORT_TYPES[rtype]["role"]):
-            self.tg.send(o["sk"], messages.officer_report(rep, city, zone),
-                         buttons=[[{"text": "✅ Resolved", "callback_data": f"r|{city['id']}|{day}|{sk}"}]])
+        engine.Notifier(self.st, self.tg).send_report(city, zone, day, sk, rep)
         self.tg.send(chat, messages.ILL_REPLY[lang] if rtype == "ill" else messages.REPORT_THANKS[lang])
 
 
@@ -258,7 +273,8 @@ def _invoke_agent(question: str, city: str, chat_id=None) -> str | None:
 def handler(event, context):
     secret = os.environ.get("TELEGRAM_SECRET")
     headers = {k.lower(): v for k, v in (event.get("headers") or {}).items()}
-    if not secret or not hmac.compare_digest(headers.get("x-telegram-bot-api-secret-token", ""), secret):
+    given = str(headers.get("x-telegram-bot-api-secret-token", "")).encode()
+    if not secret or not hmac.compare_digest(given, secret.encode()):
         return {"statusCode": 403, "body": "forbidden"}  # only Telegram knows the secret
     body = event.get("body") or "{}"
     if event.get("isBase64Encoded"):

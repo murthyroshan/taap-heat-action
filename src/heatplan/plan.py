@@ -106,9 +106,11 @@ def zone_risk(zone: dict, hours: list[dict], day: str, city: dict) -> dict:
         local = h["time"].astimezone(IST)
         if night_start <= local < night_end and h.get("temp") is not None:
             night_temps.append(h["temp"])
-        if local.date() != day_d or h.get("temp") is None:
+        # A missing humidity or sunshine value would read as dry air / no sun and understate the risk,
+        # so such hours are skipped rather than guessed. Missing wind is fine: calm air is the cautious case.
+        if local.date() != day_d or h.get("temp") is None or h.get("rh") is None or h.get("sw") is None:
             continue
-        w = wbgt(h["temp"], h.get("rh") or 0, h.get("wind") or 0, h.get("sw") or 0, h.get("direct") or 0,
+        w = wbgt(h["temp"], h["rh"], h.get("wind") or 0, h["sw"], h.get("direct") or 0,
                  zone["lat"], zone["lon"], h["time"], h.get("p") or 1000.0)
         hourly.append({"hour": local.hour, "temp": round(h["temp"], 1), "rh": round(h.get("rh") or 0),
                        "wbgt": w["wbgt"], "band": band_for(w["wbgt"])})
@@ -206,15 +208,16 @@ def validate_city(cfg: dict, require_zones: bool = True) -> list[str]:
     roles = cfg.get("roles") or {}
     seen = set()
     for i, a in enumerate(cfg.get("actions") or []):
-        where = f"action {i + 1} ({a.get('id', '?')})"
+        where = f"action {i + 1} ({a.get('id', '?') if isinstance(a, dict) else '?'})"
         if not isinstance(a, dict) or not ACTION_FIELDS <= set(a):
             errs.append(f"{where}: needs {sorted(ACTION_FIELDS)}")
             continue
-        if a["id"] in seen:
-            errs.append(f"{where}: duplicate id")
-        seen.add(a["id"])
         if not (isinstance(a["id"], str) and a["id"].isalnum() and len(a["id"]) <= 12):
             errs.append(f"{where}: id must be short and alphanumeric")
+        elif a["id"] in seen:
+            errs.append(f"{where}: duplicate id")
+        else:
+            seen.add(a["id"])
         if a["role"] not in roles:
             errs.append(f"{where}: role '{a['role']}' is not in roles")
         when = a["when"] if isinstance(a["when"], dict) else {}
@@ -230,13 +233,12 @@ def validate_city(cfg: dict, require_zones: bool = True) -> list[str]:
             errs.append(f"{where}: text may only use {{zone}}, {{start}}, {{end}}")
     if not cfg.get("actions"):
         errs.append("no actions")
-    if require_zones:
-        zones = cfg.get("zones") or []
-        if not zones:
-            errs.append("no zones")
-        for z in zones:
-            if not {"id", "name", "name_hi", "lat", "lon"} <= set(z):
-                errs.append(f"zone {z.get('id', '?')}: needs id, name, name_hi, lat, lon")
-            elif not (6 <= z["lat"] <= 37 and 68 <= z["lon"] <= 98):
-                errs.append(f"zone {z['id']}: coordinates are outside India")
+    zones = cfg.get("zones") or []
+    if require_zones and not zones:
+        errs.append("no zones")
+    for z in zones if isinstance(zones, list) else []:
+        if not isinstance(z, dict) or not {"id", "name", "name_hi", "lat", "lon"} <= set(z):
+            errs.append(f"zone {z.get('id', '?') if isinstance(z, dict) else '?'}: needs id, name, name_hi, lat, lon")
+        elif not all(type(z[k]) in (int, float) for k in ("lat", "lon")) or not (6 <= z["lat"] <= 37 and 68 <= z["lon"] <= 98):
+            errs.append(f"zone {z['id']}: coordinates must be numbers inside India")
     return errs

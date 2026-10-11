@@ -20,12 +20,12 @@
 - Outdoor workers find out the heat was dangerous after they have worked through it.
 
 **What we built.** Taap runs a city's plan automatically, every hour:
-1. It computes humidity-aware **WBGT** for each zone, using the Liljegren model, and turns it into **work–rest schedules** for heavy labour (ACGIH limits).
+1. It computes humidity-aware **WBGT** for each zone, using the Liljegren model, and turns it into **work and rest schedules** for heavy labour (ACGIH limits).
 2. It sends workers **Hindi voice notes and text** on Telegram.
 3. It sends each triggered plan action to the responsible department's officer, who taps **Done**. The **public plan-vs-reality log** records who did what and when.
 4. Workers report back (no water, no shade, work not stopped, someone unwell), and each report reaches the right officer.
 5. A **CAP 1.2 feed** (SACHET's format) and **printable Hindi posters** for labour chowks reach people without smartphones.
-6. A **backtest on the May–June 2024 Delhi heatwave** shows what the plan would have triggered.
+6. A **backtest on the May to June 2024 Delhi heatwave** shows what the plan would have triggered.
 7. Any city is a config file; Delhi and Ahmedabad are included. A new city can start from its plan PDF: Bedrock drafts the config, a validator checks it, and a person approves it.
 
 **Where AWS fits.** The project runs two ways from the same code:
@@ -55,14 +55,14 @@
 
 | Time | On screen | Say |
 |---|---|---|
-| 0:00–0:20 | Headlines from the May 2024 heatwave; IMD's 49.9 °C | "Delhi has a Heat Action Plan. In May 2024 it hit 49.9 °C. Can anyone tell you whether the plan ran?" |
-| 0:20–0:45 | Dashboard → Replay → 28 May 2024 → Run | "Taap runs the plan. Every hour it computes heat stress the way a body feels it — temperature, humidity, sun and wind — for every zone." |
-| 0:45–1:15 | Phone: Hindi voice note plays; text shows the work–rest schedule | "A construction worker in Narela gets this in Hindi, as a voice note: exactly when to stop heavy work." |
-| 1:15–1:40 | Officer phone: action → tap ✅ Done → dashboard row turns Done | "The plan's actions go to named officers. When they act, the public log shows it. Plan versus reality." |
-| 1:40–1:55 | Worker taps "No water" → officer gets it → Resolved | "Workers can report back. Reports reach the right department." |
-| 1:55–2:15 | Ask the assistant: "Which zones still have open actions?" | "Officers can ask the plan assistant — a Strands agent on Amazon Bedrock that reads live state and doesn't make things up." |
-| 2:15–2:40 | Architecture diagram; console: EventBridge schedule, Lambda logs, DynamoDB items, CAP XML | "All on AWS: EventBridge, Lambda, DynamoDB, Polly, Bedrock, deployed with SAM. A standard CAP feed lets it plug into India's SACHET alerts." |
-| 2:40–3:00 | Live October view: plan tier green, worker band very high; switch city to Ahmedabad; upload a plan PDF and get a draft config; Hindi poster | "Even today, a humid October afternoon is unsafe for heavy work — the temperature-only plan says green. Any city is a config file. 250 plans exist. Let's make them run." |
+| 0:00 to 0:20 | Headlines from the May 2024 heatwave; IMD's 49.9 °C | "Delhi has a Heat Action Plan. In May 2024 it hit 49.9 °C. Can anyone tell you whether the plan ran?" |
+| 0:20 to 0:45 | Dashboard → Replay → 28 May 2024 → Run | "Taap runs the plan. Every hour it computes heat stress the way a body feels it, from temperature, humidity, sun and wind, for every zone." |
+| 0:45 to 1:15 | Phone: Hindi voice note plays; text shows the work and rest schedule | "A construction worker in Narela gets this in Hindi, as a voice note: exactly when to stop heavy work." |
+| 1:15 to 1:40 | Officer phone: action → tap ✅ Done → dashboard row turns Done | "The plan's actions go to named officers. When they act, the public log shows it. Plan versus reality." |
+| 1:40 to 1:55 | Worker taps "No water" → officer gets it → Resolved | "Workers can report back. Reports reach the right department." |
+| 1:55 to 2:15 | Ask the assistant: "Which zones still have open actions?" | "Officers can ask the plan assistant, a Strands agent on Amazon Bedrock that reads live state and doesn't make things up." |
+| 2:15 to 2:40 | Architecture diagram; console: EventBridge schedule, Lambda logs, DynamoDB items, CAP XML | "All on AWS: EventBridge, Lambda, DynamoDB, Polly, Bedrock, deployed with SAM. A standard CAP feed lets it plug into India's SACHET alerts." |
+| 2:40 to 3:00 | Live October view: plan tier green, worker band very high; switch city to Ahmedabad; upload a plan PDF and get a draft config; Hindi poster | "Even today, a humid October afternoon is unsafe for heavy work, but the temperature-only plan says green. Any city is a config file. 250 plans exist. Let's make them run." |
 
 ## Blog outline (AWS Builder Center)
 

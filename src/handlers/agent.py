@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 
 from heatplan import engine, replay, store
 from heatplan.plan import BANDS, load_city
@@ -16,7 +17,8 @@ SYSTEM = """You are the duty assistant for a city's Heat Action Plan control roo
 Answer officers' questions using ONLY the tools. Be brief (under 120 words), concrete and operational:
 name zones, times (IST), and which actions are open vs done. Quote the plan reference when relevant.
 Temperatures are modelled forecast values, not station readings. Never invent data; if a tool
-returns nothing, say so. Do not give medical diagnoses; for emergencies say: call 112."""
+returns nothing, say so. Do not give medical diagnoses; for emergencies say: call 112.
+Answers are read in Telegram: plain text and short lines only - no tables, no markdown headings, no citation marks."""
 
 
 def _tools(st, mode_default="live"):
@@ -120,7 +122,15 @@ def answer(question: str, city: str, st=None) -> str:
     st = st or store.get_store()
     agent = Agent(model=make_model(), system_prompt=SYSTEM + f"\nThe officer's city is '{city}'.",
                   tools=_tools(st), callback_handler=None)
-    return str(agent(question)).strip()
+    return clean(str(agent(question)))
+
+
+def clean(text: str) -> str:
+    """Telegram shows raw text: drop model citation marks (【...】) and markdown emphasis/headings."""
+    text = re.sub(r"【[^】]*】", "", text)
+    text = re.sub(r"\*\*(.+?)\*\*", r"\1", text)
+    text = re.sub(r"(?m)^#{1,6}\s*", "", text)
+    return re.sub(r"[ \t]+\n", "\n", text).strip()
 
 
 IMPORT_PROMPT = """You are converting an Indian city Heat Action Plan (attached PDF) into a machine-readable config.
@@ -136,6 +146,8 @@ Return ONLY one JSON object, no prose, no code fences, with exactly these keys:
                 "when": {"tier": "yellow"|"orange"|"red"} or {"band": 1-4},
                 "text": one concrete instruction for a zone; may use {zone}, {start}, {end} placeholders only,
                 "ref": where in the plan this comes from (section or page) } ]   (4-8 of the plan's most important operational actions),
+  "zones": [ {"id": short lowercase letters, "name": area name, "name_hi": name in Hindi (Devanagari), "lat": number, "lon": number} ]
+           (only areas the plan names WITH coordinates; [] if it gives none - never guess coordinates),
   "notes": [short strings: anything ambiguous, any threshold you inferred rather than read, and missing pieces]
 }
 Only use thresholds and duties that the plan actually states; if the plan does not state a threshold, put your best reading in "notes" and use IMD heatwave criteria (yellow 40, orange 45, red 47).
@@ -198,6 +210,14 @@ def import_plan(pdf: bytes) -> dict:
 
 
 def handler(event, context):
+    if event.get("task") == "saathi":  # called by ApiFunction, which has no Strands layer
+        from heatplan import saathi
+        args = {k: event.get(k) for k in ("text", "city", "zone", "lang", "lat", "lon", "new_worker", "chat_id")}
+        try:
+            return saathi.reply(store.get_store(), **args)
+        except Exception as e:
+            print(f"saathi error: {e!r}")
+            return {"error": "saathi unavailable"}
     if event.get("task") == "import_plan":
         import base64
         try:

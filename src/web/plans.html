@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>City plans — Taap</title>
+<title>City plans | Taap</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E🔥%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@500;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
@@ -15,7 +15,7 @@
 <header class="page-hero">
   <span class="eyebrow reveal">🗺️ Plans as code</span>
   <h1 class="reveal">A PDF nobody reads, <span class="heat-text">turned into rules that run.</span></h1>
-  <p class="lede reveal">Each city's Heat Action Plan becomes a small config: thresholds, departments and actions — every rule with its source. Adding a city needs no code.</p>
+  <p class="lede reveal">Each city's Heat Action Plan becomes a small config: thresholds, departments and actions, every rule with its source. Adding a city needs no code.</p>
 </header>
 <div class="wrap">
   <section class="card reveal"><h3 id="pname">Plan</h3>
@@ -44,7 +44,7 @@ function render(){
   const lo = 35, hi = 50, w = v => ((Math.min(hi,v)-lo)/(hi-lo)*100);
   T.$('#scale').innerHTML = `<div style="flex:0 0 ${w(t.yellow)}%;background:${tc.green}"></div><div style="flex:0 0 ${w(t.orange)-w(t.yellow)}%;background:${tc.yellow}"></div><div style="flex:0 0 ${w(t.red)-w(t.orange)}%;background:${tc.orange}"></div><div style="flex:1;background:${tc.red}"></div>`;
   T.$('#scaleLbl').innerHTML = `<span>${lo}°C</span><span>yellow ≥ ${t.yellow}°</span><span>orange ≥ ${t.orange}°</span><span>red ≥ ${t.red}°</span><span>${hi}°C</span>`;
-  T.$('#rules').innerHTML = `<div><b>${c.hot_night_c}°C</b><span>hot night → tier +1</span></div><div><b>${(c.actions_min_tier||'yellow')}</b><span>departments tasked from</span></div><div><b>band ${c.alert_min_band||2}</b><span>worker push alerts from</span></div><div><b>${c.zones.length}</b><span>zones</span></div>`;
+  T.$('#rules').innerHTML = `<div><b>${c.hot_night_c}°C</b><span>hot night → tier +1 (if active)</span></div><div><b>${(c.actions_min_tier||'yellow')}</b><span>departments tasked from</span></div><div><b>band ${c.alert_min_band||2}</b><span>worker push alerts from</span></div><div><b>${c.zones.length}</b><span>zones</span></div>`;
   T.$('#actions').innerHTML = c.actions.map(a => `<tr><td>${a.when.tier?T.pill(a.when.tier+'+', tc[a.when.tier]):''} ${a.when.band?T.pill('band '+a.when.band+'+', bc[a.when.band], a.when.band===4):''}</td><td>${ICON[a.role]||'📌'} ${T.esc(c.roles[a.role]||a.role)}</td><td>${T.esc(a.text.replace(/\{zone\}/g,'‹zone›').replace(/\{start\}/g,'‹start›').replace(/\{end\}/g,'‹end›'))}<div class="note">${T.esc(a.ref)}</div></td></tr>`).join('');
   T.$('#zones').innerHTML = c.zones.map(z => `<tr><td>${T.esc(z.name)}</td><td class="hi">${T.esc(z.name_hi)}</td><td style="font-family:'JetBrains Mono',monospace">${z.lat}, ${z.lon}</td></tr>`).join('');
   T.$('#notes').innerHTML = c.notes.map(n => '• '+T.esc(n)).join('<br>');

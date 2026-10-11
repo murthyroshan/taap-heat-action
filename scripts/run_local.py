@@ -101,10 +101,10 @@ class Handler(BaseHTTPRequestHandler):
         q = {k: v[0] for k, v in parse_qs(u.query).items()}
         payload = {}
         if method == "POST":
-            n = int(self.headers.get("Content-Length") or 0)
             try:
+                n = max(0, min(int(self.headers.get("Content-Length") or 0), 8 * 1024 * 1024))
                 payload = json.loads(self.rfile.read(n) or b"{}")
-            except json.JSONDecodeError:
+            except (ValueError, UnicodeDecodeError):  # bad length, bad JSON or bad UTF-8
                 payload = {}
         try:
             res = api.route(method, u.path, q, payload, ST, agent=ask_sync, importer=import_pdf)

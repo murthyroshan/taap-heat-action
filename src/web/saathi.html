@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Saathi — heat companion · Taap</title>
+<title>Saathi, heat companion | Taap</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E🔥%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@500;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
@@ -78,15 +78,15 @@
 <script>
 const I18N = {
   hi:{opts:'विकल्प',new:'नया काम',hands:'हैंड्स-फ़्री',loc:'मेरी जगह',ph:'बोलें या लिखें…',listening:'सुन रहा हूँ…',thinking:'सोच रहा हूँ…',speaking:'बोल रहा हूँ…',idle:'माइक दबाएँ और बोलें',
-      hello:'नमस्ते! मैं साथी हूँ। गर्मी, पानी, छाँव, काम के घंटे या कोई परेशानी — कुछ भी पूछें। माइक दबाकर बोलिए।',
+      hello:'नमस्ते! मैं साथी हूँ। गर्मी, पानी, छाँव, काम के घंटे या कोई परेशानी, कुछ भी पूछें। माइक दबाकर बोलिए।',
       chips:['आज कितनी गर्मी है?','सबसे पास पानी कहाँ है?','आज कब काम करूँ?','साइट पर पानी नहीं है'],
-      walk:'मिनट',far:'दूर',risk:'आज का खतरा',places:'पास में मदद',shift:'सुरक्षित शिफ्ट',report:'शिकायत भेजी गई',rights:'आपके अधिकार',now:'अभी',sentTo:'भेजी गई:',dup:'यह शिकायत पहले ही भेजी जा चुकी है',nomic:'इस ब्राउज़र में आवाज़ से बोलना उपलब्ध नहीं — लिखकर पूछें',work:'मिनट काम',rest:'आराम',
-      eng:{agent:'AI एजेंट · Strands',fallback:'ऑफ़लाइन नियम',triage:'सुरक्षा नियम — AI नहीं'}},
+      walk:'मिनट',far:'दूर',risk:'आज का खतरा',places:'पास में मदद',shift:'सुरक्षित शिफ्ट',report:'शिकायत भेजी गई',rights:'आपके अधिकार',now:'अभी',sentTo:'भेजी गई:',dup:'यह शिकायत पहले ही भेजी जा चुकी है',nomic:'इस ब्राउज़र में आवाज़ से बोलना उपलब्ध नहीं, लिखकर पूछें',work:'मिनट काम',rest:'आराम',
+      eng:{agent:'AI एजेंट · Strands',fallback:'ऑफ़लाइन नियम',triage:'सुरक्षा नियम, AI नहीं'}},
   en:{opts:'Options',new:'New worker',hands:'Hands-free',loc:'My location',ph:'Speak or type…',listening:'LISTENING…',thinking:'THINKING…',speaking:'SPEAKING…',idle:'TAP THE MIC AND SPEAK',
       hello:"Hi, I'm Saathi. Ask me anything about today's heat, water, shade, when to work, or a problem at your site. Tap the mic and talk.",
       chips:['How hot is it today?','Where is the nearest water?','When should I work today?','There is no water at my site'],
-      walk:'min',far:'far',risk:'Today\'s risk',places:'Help nearby',shift:'Safe shift',report:'Report sent',rights:'Your rights',now:'now',sentTo:'Sent to',dup:'Already reported in the last 30 minutes',nomic:'Voice input is not available in this browser — type instead',work:'min work',rest:'rest',
-      eng:{agent:'AI agent · Strands',fallback:'offline rules',triage:'safety rules — not AI'}},
+      walk:'min',far:'far',risk:'Today\'s risk',places:'Help nearby',shift:'Safe shift',report:'Report sent',rights:'Your rights',now:'now',sentTo:'Sent to',dup:'Already reported in the last 30 minutes',nomic:'Voice input is not available in this browser, type instead',work:'min work',rest:'rest',
+      eng:{agent:'AI agent · Strands',fallback:'offline rules',triage:'safety rules, not AI'}},
 };
 let lang = T.store.get('taap.lang') || 'hi', here = null, mode = 'idle', rec = null, analyser = null, level = 0, lastReply = '';
 const sid = T.store.get('taap.sid') || (() => { const s = Math.random().toString(36).slice(2,10); T.store.set('taap.sid', s); return s; })();
@@ -164,7 +164,7 @@ function card(c){
     return `<div class="c"><h4>${L('risk')} · ${T.esc(lang==='hi'?c.zone.name_hi:c.zone.name)}</h4><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">${T.pill((lang==='hi'?b.label_hi:b.label), bc[r.band], r.band===4)}<span class="note">WBGT ${r.peak_wbgt}° · ${r.tmax}°C${r.start?` · ${r.start}–${r.end}`:''}</span></div>
       <div class="strip">${r.hourly.map(h => `<div class="${h.hour===nowH?'now':''}" title="${h.hour}:00 WBGT ${h.wbgt}°" style="height:${20+80*Math.max(0,(h.wbgt-18))/16}%;background:${bc[h.band]}"></div>`).join('')}</div></div>`; }
   if(c.type==='places'){ const IC = {water:'💧',cool:'⛱️',health:'🏥'}; const rows = Object.entries(c.places).flatMap(([k,v]) => v.map(p => ({...p,k})));
-    return `<div class="c"><h4>${L('places')}</h4>${rows.map(p => `<a class="prow${p.too_far?' far':''}" href="${p.directions}" target="_blank" rel="noopener"><span>${IC[p.k]}</span><span>${T.esc(p.n)}${p.official?' ✅':''}<div class="note">${(p.dist_m/1000).toFixed(1)} km${p.too_far?' · ⚠️ '+L('far'):''}</div></span><b class="m">${p.walk_min} ${L('walk')}</b></a>`).join('') || '—'}</div>`; }
+    return `<div class="c"><h4>${L('places')}</h4>${rows.map(p => `<a class="prow${p.too_far?' far':''}" href="${p.directions}" target="_blank" rel="noopener"><span>${IC[p.k]}</span><span>${T.esc(p.n)}${p.official?' ✅':''}<div class="note">${(p.dist_m/1000).toFixed(1)} km${p.too_far?' · ⚠️ '+L('far'):''}</div></span><b class="m">${p.walk_min} ${L('walk')}</b></a>`).join('') || '-'}</div>`; }
   if(c.type==='shift'){ const p = c.plan;
     return `<div class="c"><h4>${L('shift')} · ${p.start||'–'} → ${p.finish||'–'}</h4>${p.rows.filter(r=>r.work).map(r => `<div class="prow" style="grid-template-columns:60px 14px 1fr"><span class="note">${String(r.hour).padStart(2,'0')}:00</span><span style="width:12px;height:12px;border-radius:3px;background:${bc[r.band]}"></span><span><b>${r.work} ${L('work')}</b>${r.rest?` · ${r.rest} ${L('rest')}`:''}</span></div>`).join('')}</div>`; }
   if(c.type==='report') return `<div class="c" style="border-color:var(--b0)">✅ <b>${c.duplicate ? L('dup') : `${L('report')} · ${L('sentTo')} ${T.esc(c.department)}`}</b></div>`;
@@ -200,7 +200,7 @@ async function send(text){
   T.$('#locate').onclick = () => navigator.geolocation && navigator.geolocation.getCurrentPosition(p => { here = [p.coords.latitude, p.coords.longitude]; T.$('#locate').classList.add('on'); T.toast('📍 ✓','good'); }, () => T.toast('Location unavailable','bad'), {timeout:8000});
   if('speechSynthesis' in window) speechSynthesis.getVoices();
   bubble('ai', T.esc(L('hello')));
-  if(T.STATIC) bubble('ai', 'This is a read-only demo snapshot — Saathi answers in the live app.');
+  if(T.STATIC) bubble('ai', 'This is a read-only demo snapshot. Saathi answers in the live app.');
   T.buttons();
 })();
 </script>

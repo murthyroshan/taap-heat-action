@@ -35,7 +35,7 @@ def build(snap: dict, zone_id: str) -> str:
     city_id, zone_key = snap["city"], zone_id
     return f"""<!doctype html><html lang="hi"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>गर्मी सूचना — {escape(zone['name_hi'])}</title>
+<title>गर्मी सूचना: {escape(zone['name_hi'])}</title>
 <style>
  @page {{ size: A4; margin: 12mm; }}
  body {{ font-family: 'Noto Sans Devanagari','Mangal',system-ui,sans-serif; color:#111; background:#fff; margin:0 auto; max-width:780px; padding:16px; }}
@@ -50,7 +50,7 @@ def build(snap: dict, zone_id: str) -> str:
 <button class=noprint onclick="print()">🖨️ Print</button>
 <h1>🔥 गर्मी सूचना</h1>
 <h2>{escape(zone['name_hi'])} · {escape(city['name_hi'])} · {escape(messages.date_label(snap['date'], 'hi'))}</h2>
-<div class=band>{escape(b['label_hi'].split(':')[0])} — {escape(headline)}</div>
+<div class=band>{escape(b['label_hi'].split(':')[0])}: {escape(headline)}</div>
 <table>{''.join(rows)}</table>
 <div class=rules>💧 हर 15–20 मिनट पानी पिएँ, प्यास न लगे तब भी।<br>
 ⛱️ आराम छाँव में करें। सिर ढककर रखें।<br>

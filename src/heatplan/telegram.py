@@ -47,6 +47,8 @@ class Telegram:
         return {}
 
     def send(self, chat_id, text: str, buttons: list | None = None, keyboard: list | None = None) -> dict:
+        if len(text) > 4096:  # Telegram rejects longer messages outright
+            text = text[:4095] + "…"
         payload = {"chat_id": chat_id, "text": text}
         if buttons:
             payload["reply_markup"] = {"inline_keyboard": buttons}

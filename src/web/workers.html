@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Workers — Taap heat alerts</title>
+<title>Workers | Taap heat alerts</title>
 <meta name="description" content="Today's heat risk and work–rest schedule for your area, in Hindi, read aloud.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E🔥%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -48,7 +48,7 @@
     <div class="lang" role="group" aria-label="Language"><button data-l="hi" class="on">हिंदी</button><button data-l="en">English</button></div>
     <select id="zone" class="ctl" aria-label="Zone"></select>
   </div>
-  <label class="toggle reveal"><input type="checkbox" id="newW"><span data-t="newq">नया काम? (2 हफ़्ते से कम) — ज़्यादा सावधानी वाली सीमा</span></label>
+  <label class="toggle reveal"><input type="checkbox" id="newW"><span data-t="newq">नया काम? (2 हफ़्ते से कम): ज़्यादा सावधानी वाली सीमा</span></label>
   <div class="status-card reveal" id="card"><div class="skel"></div><div class="skel" style="width:60%"></div></div>
   <div class="actions reveal">
     <button class="speak" id="speak">🔊 <span data-t="listen">सुनें</span></button>
@@ -70,8 +70,8 @@
 <script src="assets/core.js"></script>
 <script>
 const TXT = {
-  hi:{listen:'सुनें',share:'WhatsApp पर भेजें',poster:'पोस्टर',bot:'रोज़ अलर्ट पाएँ',today:'आज, घंटे के हिसाब से',full:'पूरा संदेश',sos:'चक्कर, उल्टी, भ्रम या बेहोशी?',sos2:'छाँव में ले जाएँ, ठंडा पानी डालें, और तुरंत कॉल करें',note:'भारी काम के लिए मार्गदर्शन (WBGT, ACGIH सीमाएँ)। चिकित्सा सलाह नहीं।',normal:'सामान्य काम',stop:'भारी काम बंद',newq:'नया काम? (2 हफ़्ते से कम) — ज़्यादा सावधानी वाली सीमा',help:'पास में पानी, छाँव और इलाज',me:'मेरी जगह',official:'✅ = अधिकारी द्वारा आज खोला गया',employer:'ठेकेदार / सुपरवाइज़र? सुरक्षित शिफ्ट बनाएँ →',employer2:'आज का काम ठंडे घंटों में कैसे पूरा करें',water:'पानी',cool:'छाँव / ठंडी जगह',health:'इलाज',walk:'मिनट पैदल',far:'इस गर्मी में {n} मिनट से ज़्यादा पैदल न चलें — पहले पास की छाँव लें।',from_you:'आपकी जगह से',from_zone:'इलाके के बीच से',nohelp:'पास में कुछ नहीं मिला',work:'मिनट काम',rest:'मिनट आराम',nodata:'अभी जानकारी उपलब्ध नहीं।',low:'आज गर्मी का खतरा कम है',stopnow:'भारी काम बंद रखें'},
-  en:{listen:'Listen',share:'Share on WhatsApp',poster:'Poster',bot:'Daily alerts',today:'Today, hour by hour',full:'Full message',sos:'Dizzy, vomiting, confused or fainting?',sos2:'Move to shade, pour cool water, and call now',note:'Guidance for heavy work (WBGT, ACGIH limits). Not medical advice.',normal:'Normal work',stop:'Stop heavy work',newq:'New to this work (under 2 weeks)? Use stricter limits',help:'Water, shade and care nearby',me:'My location',official:'✅ = opened today by an officer',employer:'Contractor or supervisor? Plan a safe shift →',employer2:'Fit today\'s work into the cooler hours',water:'Water',cool:'Shade / cool place',health:'Care',walk:'min walk',far:'In this heat, don\'t walk more than {n} min — find nearer shade first.',from_you:'from your location',from_zone:'from the zone centre',nohelp:'Nothing found nearby',work:'min work',rest:'min rest',nodata:'No data yet.',low:'Low heat risk today',stopnow:'Stop heavy work'},
+  hi:{listen:'सुनें',share:'WhatsApp पर भेजें',poster:'पोस्टर',bot:'रोज़ अलर्ट पाएँ',today:'आज, घंटे के हिसाब से',full:'पूरा संदेश',sos:'चक्कर, उल्टी, भ्रम या बेहोशी?',sos2:'छाँव में ले जाएँ, ठंडा पानी डालें, और तुरंत कॉल करें',note:'भारी काम के लिए मार्गदर्शन (WBGT, ACGIH सीमाएँ)। चिकित्सा सलाह नहीं।',normal:'सामान्य काम',stop:'भारी काम बंद',newq:'नया काम? (2 हफ़्ते से कम): ज़्यादा सावधानी वाली सीमा',help:'पास में पानी, छाँव और इलाज',me:'मेरी जगह',official:'✅ = अधिकारी द्वारा आज खोला गया',employer:'ठेकेदार / सुपरवाइज़र? सुरक्षित शिफ्ट बनाएँ →',employer2:'आज का काम ठंडे घंटों में कैसे पूरा करें',water:'पानी',cool:'छाँव / ठंडी जगह',health:'इलाज',walk:'मिनट पैदल',far:'इस गर्मी में {n} मिनट से ज़्यादा पैदल न चलें, पहले पास की छाँव लें।',from_you:'आपकी जगह से',from_zone:'इलाके के बीच से',nohelp:'पास में कुछ नहीं मिला',work:'मिनट काम',rest:'मिनट आराम',nodata:'अभी जानकारी उपलब्ध नहीं।',low:'आज गर्मी का खतरा कम है',stopnow:'भारी काम बंद रखें'},
+  en:{listen:'Listen',share:'Share on WhatsApp',poster:'Poster',bot:'Daily alerts',today:'Today, hour by hour',full:'Full message',sos:'Dizzy, vomiting, confused or fainting?',sos2:'Move to shade, pour cool water, and call now',note:'Guidance for heavy work (WBGT, ACGIH limits). Not medical advice.',normal:'Normal work',stop:'Stop heavy work',newq:'New to this work (under 2 weeks)? Use stricter limits',help:'Water, shade and care nearby',me:'My location',official:'✅ = opened today by an officer',employer:'Contractor or supervisor? Plan a safe shift →',employer2:'Fit today\'s work into the cooler hours',water:'Water',cool:'Shade / cool place',health:'Care',walk:'min walk',far:'In this heat, don\'t walk more than {n} min. Find nearer shade first.',from_you:'from your location',from_zone:'from the zone centre',nohelp:'Nothing found nearby',work:'min work',rest:'min rest',nodata:'No data yet.',low:'Low heat risk today',stopnow:'Stop heavy work'},
 };
 let lang = T.store.get('taap.lang') || 'hi', data = null, meta = {}, here = null, hmap, hlayer;
 const isNew = () => T.$('#newW').checked;
@@ -126,7 +126,7 @@ function render(){
     const txt = h.band===0 ? t('normal') : h.band>=4 ? t('stop') : `${hb.work} ${t('work')} · ${hb.rest} ${t('rest')}`;
     return `<div class="hour-row${h.hour===nowH?' now':''}"><span class="h">${String(h.hour).padStart(2,'0')}:00</span><span class="sw" style="background:${bc[h.band]}"></span><span><b>${T.esc(txt)}</b> <span class="note">· ${h.temp}°C · WBGT ${h.wbgt}°</span></span></div>`; }).join('');
   T.$('#msg').textContent = data.text;
-  T.$('#wa').href = 'https://wa.me/?text=' + encodeURIComponent(data.text + '\n\n— Taap');
+  T.$('#wa').href = 'https://wa.me/?text=' + encodeURIComponent(data.text + '\n\n- Taap');
   T.$('#poster').href = T.STATIC ? `posters/${T.city()}-live-${z.id}.html` : `/poster?city=${T.city()}&zone=${z.id}&mode=live`;
 }
 function speak(){
@@ -137,7 +137,7 @@ function speak(){
   const u = new SpeechSynthesisUtterance(text.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu,''));
   u.lang = lang==='hi' ? 'hi-IN' : 'en-IN'; u.rate = .95;
   const v = speechSynthesis.getVoices().find(v => v.lang.toLowerCase().startsWith(lang==='hi'?'hi':'en-in')) || speechSynthesis.getVoices().find(v => v.lang.toLowerCase().startsWith(lang));
-  if(v) u.voice = v; else if(lang==='hi') T.toast('No Hindi voice installed — using the default voice');
+  if(v) u.voice = v; else if(lang==='hi') T.toast('No Hindi voice installed, using the default voice');
   u.onend = u.onerror = () => btn.classList.remove('speaking');
   btn.classList.add('speaking'); speechSynthesis.speak(u);
 }
@@ -153,7 +153,7 @@ function speak(){
   T.$('#plannerLink').href = T.link('/planner');
   T.$('#locate').onclick = () => { if(!navigator.geolocation) return T.toast('Location not available','bad');
     navigator.geolocation.getCurrentPosition(p => { here = [p.coords.latitude.toFixed(5), p.coords.longitude.toFixed(5)]; loadHelp(); },
-      () => T.toast(lang==='hi' ? 'जगह नहीं मिली — इलाके के हिसाब से दिखा रहे हैं' : 'Could not get your location — showing the zone', 'bad'), {timeout:8000}); };
+      () => T.toast(lang==='hi' ? 'जगह नहीं मिली, इलाके के हिसाब से दिखा रहे हैं' : 'Could not get your location, showing the zone', 'bad'), {timeout:8000}); };
   T.$('#zone').onchange = () => { here = null; load(); };
   T.$$('.lang button').forEach(b => b.onclick = () => { lang = b.dataset.l; T.store.set('taap.lang', lang); applyLang(); fillZones(); load(); });
   T.$('#speak').onclick = speak;

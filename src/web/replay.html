@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>2024 heatwave replay — Taap</title>
+<title>2024 heatwave replay | Taap</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E🔥%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -23,7 +23,7 @@
     <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
       <button class="primary" id="play">▶ Play</button>
       <input type="range" id="day" class="slider" min="0" max="0" value="0" style="flex:1;min-width:200px" aria-label="Day">
-      <b id="dayLabel" style="font-family:'JetBrains Mono',monospace;min-width:110px">—</b>
+      <b id="dayLabel" style="font-family:'JetBrains Mono',monospace;min-width:110px">-</b>
     </div>
     <div id="chart" style="margin-top:14px"></div>
     <div class="legend"><span><i style="background:#ff9a3c"></i>daily max temperature (modelled)</span><span><i style="background:var(--b4)"></i>peak WBGT</span><span>shaded column = reference day · hover for values</span></div>
@@ -31,7 +31,7 @@
   <div class="grid2" style="grid-template-columns:minmax(0,1.4fr) minmax(0,1fr)">
     <section class="card reveal"><div id="map" style="height:500px"></div><div class="legend" id="legend"></div></section>
     <section class="card reveal" style="--d:.06s">
-      <h3 id="sideDate">—</h3>
+      <h3 id="sideDate">-</h3>
       <div style="display:flex;gap:6px;flex-wrap:wrap" id="sidePills"></div>
       <div class="kpi-mini" style="margin-top:14px" id="sideNums"></div>
       <div class="rule" id="story" style="margin-top:14px">Press play.</div>

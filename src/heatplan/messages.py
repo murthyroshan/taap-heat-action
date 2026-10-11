@@ -61,7 +61,7 @@ def worker_alert(zr: dict, zone: dict, day: str, lang: str, replay: bool = False
     b = BANDS[zr["band"]]
     tag = ("[अभ्यास / REPLAY] " if lang == "hi" else "[REPLAY] ") if replay else ""
     if lang == "hi":
-        head = f"{tag}{BAND_EMOJI[zr['band']]} गर्मी चेतावनी — {zone['name_hi']}\n{date_label(day, 'hi')}"
+        head = f"{tag}{BAND_EMOJI[zr['band']]} गर्मी चेतावनी: {zone['name_hi']}\n{date_label(day, 'hi')}"
         when = window_hi(zr["start"], zr["end"])
         if zr["band"] >= 4:
             rule = f"⛔ {when} भारी काम बंद रखें। हल्का काम सिर्फ छाँव में करें।"
@@ -69,20 +69,20 @@ def worker_alert(zr: dict, zone: dict, day: str, lang: str, replay: bool = False
         else:
             rule = f"👷 {when}: हर घंटे {b['work']} मिनट काम, {b['rest']} मिनट छाँव में आराम।"
             rule_v = f"{when}, हर घंटे {b['work']} मिनट काम करें और {b['rest']} मिनट छाँव में आराम करें।"
-        night = "\n🌙 रात में भी गर्मी कम नहीं हुई — शरीर थका हुआ है, ज़्यादा सावधानी रखें।" if zr.get("hot_night") else ""
+        night = "\n🌙 रात में भी गर्मी कम नहीं हुई, शरीर थका हुआ है, ज़्यादा सावधानी रखें।" if zr.get("hot_night") else ""
         text = (f"{head}\nखतरा: {b['label_hi']} (WBGT {zr['peak_wbgt']}°C)\n\n{rule}\n"
                 f"💧 हर 15–20 मिनट पानी पिएँ, प्यास न लगे तब भी।{night}\n"
                 f"🚨 चक्कर, उल्टी, तेज़ सिरदर्द या बेहोशी हो तो तुरंत छाँव में ले जाएँ, ठंडा पानी डालें और {EMERGENCY} पर कॉल करें।")
         voice = (f"{zone['name_hi']} के लिए गर्मी की चेतावनी। आज {b['label_hi']}। {rule_v} "
                  f"हर पंद्रह से बीस मिनट में पानी पिएँ। चक्कर या उल्टी हो तो तुरंत छाँव में जाएँ और एक सौ बारह पर कॉल करें।")
     else:
-        head = f"{tag}{BAND_EMOJI[zr['band']]} Heat alert — {zone['name']}\n{date_label(day, 'en')}"
+        head = f"{tag}{BAND_EMOJI[zr['band']]} Heat alert: {zone['name']}\n{date_label(day, 'en')}"
         when = window_en(zr["start"], zr["end"])
         if zr["band"] >= 4:
             rule = f"⛔ {when}: stop heavy work. Light work in shade only."
         else:
             rule = f"👷 {when}: every hour, {b['work']} min work, {b['rest']} min rest in shade."
-        night = "\n🌙 The night did not cool down — bodies have not recovered; take extra care." if zr.get("hot_night") else ""
+        night = "\n🌙 The night did not cool down, so bodies have not recovered; take extra care." if zr.get("hot_night") else ""
         text = (f"{head}\nRisk: {b['label']} (WBGT {zr['peak_wbgt']}°C)\n\n{rule}\n"
                 f"💧 Drink water every 15–20 minutes, even if not thirsty.{night}\n"
                 f"🚨 Dizziness, vomiting, severe headache or fainting: move to shade, cool with water, call {EMERGENCY}.")

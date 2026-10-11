@@ -109,7 +109,7 @@ T.nav = async ({onCity}={}) => {
   if(!T.REDUCED) addEventListener('scroll', () => { const h = document.documentElement, b = $('#readbar'); if(b) b.style.width = (h.scrollTop/(h.scrollHeight-h.clientHeight)*100)+'%'; }, {passive:true});
   return d;
 };
-T.footer = () => { const f = $('#foot'); if(f) f.innerHTML = `<div class="foot"><span>🔥 <b>Taap</b> — a Heat Action Plan, running and accountable.</span><span>Weather: <a href="https://open-meteo.com">Open-Meteo</a> (CC-BY 4.0) · Maps: © OpenStreetMap · Agents: Strands Agents (AWS open source) · Emergency: 112</span></div>`; };
+T.footer = () => { const f = $('#foot'); if(f) f.innerHTML = `<div class="foot"><span>🔥 <b>Taap</b>: a Heat Action Plan, running and accountable.</span><span>Weather: <a href="https://open-meteo.com">Open-Meteo</a> (CC-BY 4.0) · Maps: © OpenStreetMap · Agents: Strands Agents (AWS open source) · Emergency: 112</span></div>`; };
 T.boot = () => { T.reveal(); T.tilt(); T.buttons(); T.footer(); };
 })();
 

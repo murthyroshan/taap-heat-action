@@ -9,12 +9,16 @@ Every tool also returns a "card" the page renders (map links, schedule, emergenc
 """
 from __future__ import annotations
 
+import hashlib
 import re
 from datetime import datetime, timezone
 
-from . import messages, places, plan, shift, store
+from . import engine, messages, places, plan, shift, store
 from .plan import BANDS, load_city, zone_by_id
 from .wbgt import IST
+
+# Saathi is a public page, so web reports are also capped city-wide (Telegram reports come from known chats).
+WEB_REPORTS_PER_MINUTE = 6
 
 RED_FLAGS = [
     "बेहोश", "बेहोशी", "होश नहीं", "गिर गया", "गिर गई", "दौरा", "उल्टी", "उलटी", "भ्रम", "बोल नहीं", "पसीना नहीं", "सांस", "साँस",
@@ -49,8 +53,10 @@ def triage(text: str):
 class Session:
     """Context for one turn: who is asking, where, and the cards tools produce."""
 
-    def __init__(self, st, city: str, zone: str | None, lang: str, lat=None, lon=None, new_worker=False, chat_id="web"):
+    def __init__(self, st, city: str, zone: str | None, lang: str, lat=None, lon=None, new_worker=False, chat_id="web",
+                 notifier=None):
         self.st, self.city, self.lang, self.new_worker, self.chat_id = st, load_city(city), lang, new_worker, chat_id
+        self.notifier = notifier
         self.lat, self.lon = lat, lon
         z = zone_by_id(self.city, zone) if zone else None
         if not z and lat is not None:
@@ -111,10 +117,18 @@ class Session:
         if last and store.now_ts() - last["at"] < 30 * 60:
             self.cards.append({"type": "report", "kind": kind, "duplicate": True})
             return {"filed": False, "reason": "already reported in the last 30 minutes"}
+        minute_key = f"saathi-report#{self.city['id']}#{store.now_ts() // 60}"
+        filed = (self.st.get("RATE", minute_key) or {"n": 0})["n"]
+        if filed >= WEB_REPORTS_PER_MINUTE:
+            return {"filed": False, "reason": "too many reports right now; try again in a minute"}
+        self.st.put("RATE", minute_key, {"n": filed + 1})
         self.st.put("RATE", rate_key, {"at": store.now_ts()})
         rep = {"type": kind, "city": self.city["id"], "zone": self.zone["id"], "zone_name": self.zone["name"],
                "time": now.strftime("%H:%M"), "status": "open", "lang": self.lang, "via": "saathi"}
-        self.st.put(f"REP#{self.city['id']}#{day}", f"{now.strftime('%H%M%S')}#{self.chat_id}", rep)
+        # short key: it travels in the officer's Resolve button (Telegram allows 64 bytes of callback data)
+        sk = f"{now.strftime('%H%M%S')}#s{hashlib.sha1(str(self.chat_id).encode()).hexdigest()[:8]}"
+        self.st.put(f"REP#{self.city['id']}#{day}", sk, rep)
+        (self.notifier or engine.Notifier(self.st)).send_report(self.city, self.zone, day, sk, rep)
         role = messages.REPORT_TYPES[kind]["role"]
         self.cards.append({"type": "report", "kind": kind, "zone": self.zone["name"], "department": self.city["roles"].get(role, role)})
         return {"filed": True, "department": self.city["roles"].get(role, role), "zone": self.zone["name"]}
@@ -205,6 +219,8 @@ def _fallback(sess: Session, text: str) -> str:
     intent = next((name for name, keys in INTENTS if any(k in t for k in keys)), "risk")
     if intent.startswith("report_"):
         r = sess.file_report(intent.split("_")[1])
+        if not r["filed"] and "too many" in r.get("reason", ""):
+            return "अभी बहुत शिकायतें आ रही हैं, एक मिनट बाद फिर भेजें।" if hi else "Too many reports right now; please try again in a minute."
         if not r["filed"]:
             return "यह शिकायत अभी-अभी भेजी जा चुकी है।" if hi else "That was already reported in the last half hour."
         return (f"आपकी शिकायत {r['department']} को भेज दी गई है।" if hi else f"Sent to {r['department']} for {r['zone']}.")
@@ -237,10 +253,10 @@ def _fallback(sess: Session, text: str) -> str:
 
 
 def reply(st, text: str, city: str, zone: str | None = None, lang: str = "hi", lat=None, lon=None,
-          new_worker: bool = False, chat_id: str = "web", use_model: bool = True) -> dict:
+          new_worker: bool = False, chat_id: str = "web", use_model: bool = True, notifier=None) -> dict:
     lang = "en" if lang == "en" else "hi"
     text = re.sub(r"\s+", " ", (text or "")).strip()[:500]
-    sess = Session(st, city, zone, lang, lat, lon, new_worker, chat_id)
+    sess = Session(st, city, zone, lang, lat, lon, new_worker, chat_id, notifier)
     level = triage(text)
     if level == "emergency":  # fixed rules, never the model
         sess.file_report("ill")

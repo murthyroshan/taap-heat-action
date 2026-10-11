@@ -1,9 +1,11 @@
 """Common Alerting Protocol (CAP 1.2) feed: the format India's SACHET system ingests."""
 from __future__ import annotations
 
+from datetime import datetime
 from xml.sax.saxutils import escape
 
 from .plan import BANDS, load_city, zone_by_id
+from .wbgt import IST
 
 SEVERITY = ["Minor", "Minor", "Moderate", "Severe", "Extreme"]
 ZONE_RADIUS_KM = 5
@@ -13,6 +15,10 @@ def build(snap: dict, mode: str, sender: str = "taap-heat-plan") -> str:
     city = load_city(snap["city"])
     status = "Exercise" if mode == "replay" else "Actual"
     sent = snap.get("generated_at", "")
+    try:  # CAP forbids "+00:00" (UTC must be "-00:00"); IST is the natural zone for SACHET anyway
+        sent = datetime.fromisoformat(sent).astimezone(IST).isoformat(timespec="seconds")
+    except ValueError:
+        pass
     infos = []
     for zr in snap["zones"]:
         if not zr.get("available") or zr["band"] < 1:

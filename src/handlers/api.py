@@ -23,6 +23,20 @@ def _import_plan(pdf_b64: str) -> dict:
     res = client.invoke(FunctionName=os.environ["AGENT_FUNCTION"],
                         Payload=json.dumps({"task": "import_plan", "pdf_b64": pdf_b64}))
     return json.loads(res["Payload"].read() or b"{}")
+
+
+def _saathi_remote(**kwargs) -> dict:
+    """On AWS the Strands layer lives on AgentFunction, so Saathi's model turn runs there."""
+    import boto3
+    from botocore.config import Config
+    client = boto3.client("lambda", config=Config(read_timeout=60, retries={"max_attempts": 1}))
+    res = client.invoke(FunctionName=os.environ["AGENT_FUNCTION"], Payload=json.dumps({"task": "saathi", **kwargs}))
+    out = json.loads(res["Payload"].read() or b"{}")
+    if "reply" not in out:
+        raise RuntimeError(out.get("error") or "no reply")
+    return out
+
+
 WEB_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "web")
 PAGES = {"/": "index", "/index.html": "index", "/dashboard": "dashboard", "/workers": "workers", "/officers": "officers",
          "/ledger": "ledger", "/replay": "replay", "/planner": "planner", "/saathi": "saathi", "/plans": "plans", "/method": "method"}
@@ -49,15 +63,18 @@ def _city(q):
     return c
 
 
-def _replay_snapshot(st, city: str, date: str | None):
+def _replay_snapshot(st, city: str, day: str | None):
     """Replay days are computed on demand from the cached history (no messages sent)."""
     win = load_city(city)["replay"]
-    day = date or win["default"]
+    try:
+        day = date.fromisoformat(day).isoformat() if day else win["default"]
+    except ValueError:
+        return None  # e.g. "2024-06-1" must not become a second copy of 2024-06-01
     snap = store.load_snapshot(st, city, "replay", day)
     if snap or not (win["start"] <= day <= win["end"]):
         return snap
     try:
-        engine.run(city, "replay", day, replay.archive_series(st, city), st, notify=False)
+        engine.run(city, "replay", day, replay.archive_series(st, city), st, notify=False, on_demand=True)
     except weather.WeatherError as e:
         print(f"replay {city} {day}: {e}")
         return None
@@ -84,9 +101,9 @@ def ledger(st, city: str) -> dict:
     for mode in ("live", "replay"):
         for snap in st.query(store.snap_pk(city, mode), newest_first=True, limit=60):
             acts = store.list_actions(st, city, mode, snap["sk"])
-            if not acts:
-                continue
             done = [a for a in acts if a["status"] == "done"]
+            if not acts or (snap.get("on_demand") and not done):
+                continue  # replay days someone only browsed to would bury the real record
             days.append({"date": snap["sk"], "mode": mode, "tier": snap.get("tier"), "max_band": snap.get("max_band"),
                          "total": len(acts), "done": len(done)})
             for a in acts:
@@ -107,8 +124,10 @@ def ledger(st, city: str) -> dict:
     return {"city": city, "days": days, "roles": roles, "rows": rows[:1000]}
 
 
-def route(method: str, path: str, q: dict, payload: dict, st=None, agent=None, importer=None):
+def route(method: str, path: str, q: dict, payload: dict, st=None, agent=None, importer=None, saathi_remote=None):
     st = st or store.get_store()
+    if not isinstance(payload, dict):
+        return _resp({"error": "send a JSON object"}, 400)
     if method == "GET" and path in PAGES:
         with open(os.path.join(WEB_DIR, PAGES[path] + ".html"), encoding="utf-8") as fh:
             return _resp(fh.read(), ctype="text/html")
@@ -279,12 +298,20 @@ def route(method: str, path: str, q: dict, payload: dict, st=None, agent=None, i
         used = (st.get("RATE", f"saathi#{minute}") or {"n": 0})["n"]
         st.put("RATE", f"saathi#{minute}", {"n": used + 1})
         lat, lon = _latlon(payload)
-        return _resp(saathi.reply(st, text, _city(payload), payload.get("zone"), payload.get("lang", "hi"), lat, lon,
-                                  bool(payload.get("new")), str(payload.get("session") or "web")[:40],
-                                  use_model=bool(agent) and used < SAATHI_PER_MINUTE))
+        args = dict(text=text, city=_city(payload), zone=str(payload.get("zone") or "") or None,
+                    lang=str(payload.get("lang") or "hi"), lat=lat, lon=lon, new_worker=bool(payload.get("new")),
+                    chat_id=str(payload.get("session") or "web")[:40])
+        use_model = bool(agent) and used < SAATHI_PER_MINUTE
+        if saathi_remote and use_model and saathi.triage(text) != "emergency":
+            try:
+                return _resp(saathi_remote(**args))
+            except Exception as e:  # the rules still answer
+                print(f"saathi remote unavailable: {e!r}")
+                use_model = False
+        return _resp(saathi.reply(st, use_model=use_model, **args))
 
     if method == "POST" and path == "/api/ask":
-        question = (payload.get("question") or "").strip()[:500]
+        question = str(payload.get("question") or "").strip()[:500]
         if not question:
             return _resp({"error": "question required"}, 400)
         if not agent:
@@ -305,16 +332,17 @@ def handler(event, context):
     q = event.get("queryStringParameters") or {}
     payload = {}
     if event.get("body"):
-        body = base64.b64decode(event["body"]).decode() if event.get("isBase64Encoded") else event["body"]
         try:
+            body = base64.b64decode(event["body"]).decode() if event.get("isBase64Encoded") else event["body"]
             payload = json.loads(body)
-        except json.JSONDecodeError:
+        except (ValueError, UnicodeDecodeError):  # JSONDecodeError and binascii.Error are ValueErrors
             return _resp({"error": "invalid json"}, 400)
     from handlers.bot import _invoke_agent
     try:
         has_agent = bool(os.environ.get("AGENT_FUNCTION"))
         return route(method, path, q, payload, agent=_invoke_agent if has_agent else None,
-                     importer=_import_plan if has_agent else None)
+                     importer=_import_plan if has_agent else None,
+                     saathi_remote=_saathi_remote if has_agent else None)
     except ValueError as e:
         return _resp({"error": str(e)}, 400)
     except Exception as e:

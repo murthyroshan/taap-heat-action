@@ -319,7 +319,7 @@ table.t th{color:var(--muted);font-weight:600;font-size:12.5px;text-transform:up
 @media print{.fab,nav,.dock,#toasts{display:none!important}}
 
 /* =====================================================================
-   Design system v3 — "heat atlas": isotherm background, glass, display type
+   Design system v3, "heat atlas": isotherm background, glass, display type
    ===================================================================== */
 :root{
   --display:"Bricolage Grotesque",Inter,system-ui,sans-serif;

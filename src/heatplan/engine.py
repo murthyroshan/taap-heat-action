@@ -45,6 +45,15 @@ class Notifier:
     def officers_for(self, city_id, action_role):
         return [u for u in self._users(city_id, "officer") if u.get("officer_role") in (action_role, "all")]
 
+    def send_report(self, city, zone, day, sk, rep) -> int:
+        """A worker report goes to every officer of the responsible department, with a Resolve button."""
+        sent = 0
+        for o in self.officers_for(city["id"], messages.REPORT_TYPES[rep["type"]]["role"]):
+            self.tg.send(o["sk"], messages.officer_report(rep, city, zone),
+                         buttons=[[{"text": "✅ Resolved", "callback_data": f"r|{city['id']}|{day}|{sk}"}]])
+            sent += 1
+        return sent
+
     def send_zone_actions(self, city, items, zr, mode) -> int:
         """One message per officer per zone, with a Done button for each of their actions."""
         zone = zone_by_id(city, zr["zone"])
@@ -98,10 +107,12 @@ def reset_day(st, city_id, mode, day):
 
 
 def run(city_id: str, mode: str, day: str, series: dict, st, notifier: Notifier | None = None,
-        notify: bool = True, now: datetime | None = None) -> dict:
+        notify: bool = True, now: datetime | None = None, on_demand: bool = False) -> dict:
     city = load_city(city_id)
     snap = city_risk(city, series, day)
     snap["mode"] = mode
+    if on_demand:  # computed because someone browsed to this replay day; kept out of the ledger
+        snap["on_demand"] = True
     snap["generated_at"] = (now or datetime.now(timezone.utc)).isoformat(timespec="seconds")
     store.save_snapshot(st, snap, mode)
 

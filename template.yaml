@@ -32,7 +32,8 @@ Parameters:
     Description: Version of the public Strands Agents Lambda layer (2 = strands-agents 1.40.0).
   Cities:
     Type: String
-    Default: delhi,ahmedabad
+    Default: ahmedabad,chennai,delhi,hyderabad,jaipur,kolkata,mumbai
+    Description: Cities the hourly run covers (comma-separated; empty = every city in src/heatplan/cities).
   VoiceEnabled:
     Type: String
     Default: "true"
@@ -116,6 +117,7 @@ Resources:
       Environment:
         Variables:
           ADMIN_TOKEN: !Ref AdminToken
+          OFFICER_CODE: !Ref OfficerCode  # web officer console
           AGENT_FUNCTION: !Ref AgentFunction
       FunctionUrlConfig:
         AuthType: NONE
@@ -128,7 +130,7 @@ Resources:
   AgentFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Description: Officer plan assistant - Strands agent on Amazon Bedrock
+      Description: Officer plan assistant and Saathi's model turns - Strands agents on Amazon Bedrock
       Handler: handlers.agent.handler
       Timeout: 90
       MemorySize: 512
