@@ -14,6 +14,8 @@ India has 250+ Heat Action Plans. Most sit as PDFs, warn city-wide on temperatur
 
 ## Architecture (all on AWS)
 
+![Architecture](docs/architecture.svg)
+
 ```
 EventBridge Scheduler (hourly, IST)
         │
