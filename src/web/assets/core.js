@@ -85,7 +85,7 @@ T.themeIcon = () => { const b = $('#theme'); if(b) b.textContent = document.docu
 (function(){ const t = T.store.get('taap.theme'); if(t) document.documentElement.dataset.theme = t; })();
 
 /* shared nav: <nav id="nav" data-page="workers" data-city="1"></nav> */
-const NAV = [['/','Home'],['/dashboard','Dashboard'],['/replay','2024 Replay'],['/workers','Workers'],['/saathi','🎙️ Saathi'],['/officers','Officers'],['/planner','Shift planner'],['/ledger','Ledger'],['/plans','Plans'],['/method','Method']];
+const NAV = [['/','Home'],['/dashboard','Dashboard'],['/replay','2024 Replay'],['/workers','Workers'],['/saathi','🎙️ Saathi'],['/officers','Officers'],['/planner','Shift planner'],['/ledger','Ledger'],['/plans','Plans']];
 T.cities = {}; T.bands = [];
 T.city = () => (T.$('#city') || {}).value || T.store.get('taap.city') || 'delhi';
 T.nav = async ({onCity}={}) => {

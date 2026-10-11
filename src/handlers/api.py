@@ -39,7 +39,7 @@ def _saathi_remote(**kwargs) -> dict:
 
 WEB_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "web")
 PAGES = {"/": "index", "/index.html": "index", "/dashboard": "dashboard", "/workers": "workers", "/officers": "officers",
-         "/ledger": "ledger", "/replay": "replay", "/planner": "planner", "/saathi": "saathi", "/plans": "plans", "/method": "method"}
+         "/ledger": "ledger", "/replay": "replay", "/planner": "planner", "/saathi": "saathi", "/plans": "plans"}
 ASSET_TYPES = {".css": "text/css", ".js": "application/javascript", ".svg": "image/svg+xml", ".json": "application/json"}
 ASSET_RE = re.compile(r"^/assets/([a-z0-9_-]+\.(?:css|js|svg|json))$")
 
