@@ -1,0 +1,132 @@
+{
+  "id": "ahmedabad",
+  "name": "Ahmedabad",
+  "name_hi": "अहमदाबाद",
+  "plan_name": "Ahmedabad Heat Action Plan (AMC)",
+  "timezone": "Asia/Kolkata",
+  "notes": [
+    "Zones are the seven AMC administrative zones, one forecast point each (approximate centroids).",
+    "Tier thresholds are Ahmedabad's forecast-Tmax alert levels: yellow 41-42.9 C, orange 43-44.9 C, red >= 45 C (Hess et al. 2018; AMC HAP).",
+    "The hot-night threshold is illustrative and should be set by the city."
+  ],
+  "tiers": {
+    "yellow": 41.0,
+    "orange": 43.0,
+    "red": 45.0
+  },
+  "hot_night_c": 30.0,
+  "zones": [
+    {
+      "id": "central",
+      "name": "Central",
+      "name_hi": "मध्य",
+      "lat": 23.025,
+      "lon": 72.587
+    },
+    {
+      "id": "north",
+      "name": "North",
+      "name_hi": "उत्तर",
+      "lat": 23.07,
+      "lon": 72.645
+    },
+    {
+      "id": "east",
+      "name": "East",
+      "name_hi": "पूर्व",
+      "lat": 23.03,
+      "lon": 72.655
+    },
+    {
+      "id": "south",
+      "name": "South",
+      "name_hi": "दक्षिण",
+      "lat": 22.99,
+      "lon": 72.605
+    },
+    {
+      "id": "west",
+      "name": "West",
+      "name_hi": "पश्चिम",
+      "lat": 23.035,
+      "lon": 72.555
+    },
+    {
+      "id": "northwest",
+      "name": "North West",
+      "name_hi": "उत्तर पश्चिम",
+      "lat": 23.1,
+      "lon": 72.535
+    },
+    {
+      "id": "southwest",
+      "name": "South West",
+      "name_hi": "दक्षिण पश्चिम",
+      "lat": 22.99,
+      "lon": 72.505
+    }
+  ],
+  "roles": {
+    "water": "Water supply (AMC)",
+    "health": "Health department (AMC)",
+    "labour": "Labour / builders' liaison",
+    "disaster": "AMC nodal officer"
+  },
+  "actions": [
+    {
+      "id": "water",
+      "role": "water",
+      "when": {
+        "band": 2
+      },
+      "text": "Open drinking-water points at bus stops, labour nakas and markets in {zone}, {start}-{end}.",
+      "ref": "Ahmedabad HAP: drinking water at public places"
+    },
+    {
+      "id": "break",
+      "role": "labour",
+      "when": {
+        "band": 3
+      },
+      "text": "Ask builders in {zone} to shift heavy work out of {start}-{end}.",
+      "ref": "Ahmedabad HAP: changes to outdoor work schedules"
+    },
+    {
+      "id": "cool",
+      "role": "disaster",
+      "when": {
+        "tier": "orange"
+      },
+      "text": "Keep cooling spaces (temples, public buildings) open in {zone}, {start}-{end}.",
+      "ref": "Ahmedabad HAP: cooling spaces during orange/red alerts"
+    },
+    {
+      "id": "hosp",
+      "role": "health",
+      "when": {
+        "tier": "orange"
+      },
+      "text": "Put UHCs and hospitals serving {zone} on heat alert; stock ORS and ice packs.",
+      "ref": "Ahmedabad HAP: hospital preparedness on orange/red alerts"
+    },
+    {
+      "id": "mobile",
+      "role": "disaster",
+      "when": {
+        "band": 4
+      },
+      "text": "Send outreach teams and 108 ambulances on standby to hotspots in {zone}, {start}-{end}.",
+      "ref": "Ahmedabad HAP: red alert emergency response"
+    }
+  ],
+  "reference_event": {
+    "date": "2024-05-23",
+    "text": "Replay of the May 2024 Gujarat heatwave (peak days around 20-25 May). Check IMD station values before quoting a number.",
+    "source": "https://mausam.imd.gov.in/"
+  },
+  "replay": {
+    "start": "2024-05-10",
+    "end": "2024-06-10",
+    "default": "2024-05-23"
+  }
+}
