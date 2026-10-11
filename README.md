@@ -70,16 +70,16 @@ EventBridge Scheduler (hourly, IST)
 
 ## Run on your own machine: no AWS account ("Build It")
 
-Everything runs locally in one process. The officer assistant and the plan-PDF import use **Strands Agents** (AWS's open-source agent SDK) on a local **Ollama** model. State is kept in a SQLite file, and the Telegram bot uses long polling, so no public URL is needed.
+Everything runs locally in one process. The officer assistant and the plan-PDF import use **Strands Agents** (AWS's open-source agent SDK) on **Groq** (free API key) or a local **Ollama** model. State is kept in a SQLite file, and the Telegram bot uses long polling, so no public URL is needed.
 
-1. Install [Ollama](https://ollama.com/download), then `ollama pull llama3.2:3b`.
+1. Get a free API key at [console.groq.com](https://console.groq.com/keys). Or, to stay fully offline, install [Ollama](https://ollama.com/download) and run `ollama pull llama3.2:3b`.
 2. `pip install -r requirements-local.txt`
-3. Copy `.env.example` to `.env` and set `TELEGRAM_TOKEN`, `OFFICER_CODE` and `ADMIN_TOKEN`.
+3. Copy `.env.example` to `.env` and set `TELEGRAM_TOKEN`, `OFFICER_CODE`, `ADMIN_TOKEN` and `GROQ_API_KEY`.
 4. `python scripts/run_local.py`, then open http://localhost:8000.
 
 What's different from the AWS deployment:
 - no Hindi voice notes (Amazon Polly needs an AWS account), so alerts are text only;
-- the model runs on your machine;
+- the model runs on Groq or on your machine instead of Bedrock;
 - the 2024 replay data is fetched from Open-Meteo on first use and cached locally.
 
 Tests: `pip install pytest boto3 && python -m pytest -q tests`.

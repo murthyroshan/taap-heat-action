@@ -93,8 +93,18 @@ def provider() -> str:
     return os.environ.get("MODEL_PROVIDER", "bedrock").lower()
 
 
+GROQ_URL = "https://api.groq.com/openai/v1"
+
+
 def make_model(temperature: float = 0.2):
-    """Amazon Bedrock when deployed; a local Ollama model in the no-AWS-account ("Build It") mode."""
+    """Amazon Bedrock when deployed. Without an AWS account ("Build It"): Groq's hosted API
+    (OpenAI-compatible, free key) or a local Ollama model."""
+    if provider() == "groq":
+        from strands.models.openai import OpenAIModel
+        return OpenAIModel(client_args={"api_key": os.environ["GROQ_API_KEY"],
+                                        "base_url": os.environ.get("GROQ_BASE_URL", GROQ_URL)},
+                           model_id=os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b"),
+                           params={"temperature": temperature, "max_tokens": 2048})
     if provider() == "ollama":
         from strands.models.ollama import OllamaModel
         return OllamaModel(os.environ.get("OLLAMA_HOST", "http://localhost:11434"),
@@ -145,11 +155,12 @@ def _read_pdf_text(pdf: bytes, max_chars: int = 60000) -> str:
 
 
 def _model_reply(pdf: bytes) -> str:
-    if provider() == "ollama":  # local models cannot read PDFs: extract the text first
+    if provider() in ("ollama", "groq"):  # these models cannot read PDFs: extract the text first
         from strands import Agent
+        max_chars = int(os.environ.get("PDF_MAX_CHARS", 60000))
         agent = Agent(model=make_model(temperature=0.1), callback_handler=None)
         return str(agent(IMPORT_PROMPT.replace("(attached PDF)", "(text below)")
-                         + "\n\nPLAN TEXT:\n" + _read_pdf_text(pdf)))
+                         + "\n\nPLAN TEXT:\n" + _read_pdf_text(pdf, max_chars)))
     import boto3
     client = boto3.client("bedrock-runtime", region_name=os.environ.get("AWS_REGION", "ap-south-1"))
     res = client.converse(

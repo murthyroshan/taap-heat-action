@@ -1,3 +1,3 @@
-# Build It mode (no AWS account): Strands Agents (AWS open source) on a local Ollama model
-strands-agents[ollama]>=1.40
+# Build It mode (no AWS account): Strands Agents (AWS open source) on Groq or a local Ollama model
+strands-agents[openai,ollama]>=1.40
 pypdf>=4

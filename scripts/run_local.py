@@ -6,13 +6,14 @@ Starts, in one process:
   * the dashboard + API on http://localhost:8000
   * the Telegram bot (long polling, so no public URL is needed)
   * the hourly plan run (forecast -> WBGT -> actions -> alerts), plus one run at start
-  * the officer assistant: a Strands Agents agent on a local Ollama model
+  * the officer assistant: a Strands Agents agent on Groq (free API key) or a local Ollama model
 
 Settings come from environment variables or a `.env` file next to this repo:
   TELEGRAM_TOKEN   bot token from @BotFather (optional; without it there is no bot)
   OFFICER_CODE     code officers send as "/officer <code>"
   ADMIN_TOKEN      needed for replay / plan import on the dashboard (default: "local")
-  OLLAMA_MODEL     default llama3.2:3b (run `ollama pull llama3.2:3b` once)
+  GROQ_API_KEY     free key from console.groq.com -> uses Groq (GROQ_MODEL, default openai/gpt-oss-120b)
+  OLLAMA_MODEL     used when there is no GROQ_API_KEY; default llama3.2:3b (`ollama pull llama3.2:3b`)
   LOCAL_DB         SQLite file for state (default: taap.db)
   PORT             default 8000
 """
@@ -44,7 +45,7 @@ def load_env(path=os.path.join(ROOT, ".env")):
 
 load_env()
 os.environ.setdefault("LOCAL_DB", os.path.join(ROOT, "taap.db"))
-os.environ.setdefault("MODEL_PROVIDER", "ollama")
+os.environ.setdefault("MODEL_PROVIDER", "groq" if os.environ.get("GROQ_API_KEY") else "ollama")
 os.environ.setdefault("VOICE_ENABLED", "false")  # Amazon Polly needs an AWS account
 os.environ.setdefault("ADMIN_TOKEN", "local")
 
@@ -70,7 +71,7 @@ def ask_sync(question, city):
         return agent_mod.answer(question, city, ST)
     except Exception as e:
         log(f"assistant error: {e!r}")
-        return "The assistant is unavailable (is Ollama running with the model pulled?)."
+        return "The assistant is unavailable right now (check GROQ_API_KEY, or that Ollama is running)."
 
 
 def ask_for_bot(question, city, chat_id=None):
@@ -87,7 +88,7 @@ def import_pdf(pdf_b64):
         log(f"import error: {e!r}")
         if "pdf" in type(e).__module__.lower():
             return {"error": "That file could not be read as a PDF."}
-        return {"error": "Could not read the plan (is Ollama running with the model pulled?)."}
+        return {"error": "Could not read the plan with the model (check GROQ_API_KEY, or that Ollama is running)."}
 
 
 # ---- dashboard / API -------------------------------------------------------
@@ -183,7 +184,9 @@ def main():
     if not os.environ.get("OFFICER_CODE"):
         log("No OFFICER_CODE set: officers cannot register in the bot")
     log(f"Dashboard: http://localhost:{port}   (admin token: {os.environ['ADMIN_TOKEN']})")
-    log(f"Assistant: Strands Agents + Ollama ({os.environ.get('OLLAMA_MODEL', 'llama3.2:3b')}); state in {os.environ['LOCAL_DB']}")
+    model = (f"Groq ({os.environ.get('GROQ_MODEL', 'openai/gpt-oss-120b')})" if os.environ["MODEL_PROVIDER"] == "groq"
+             else f"Ollama ({os.environ.get('OLLAMA_MODEL', 'llama3.2:3b')})")
+    log(f"Assistant: Strands Agents + {model}; state in {os.environ['LOCAL_DB']}")
     try:
         ThreadingHTTPServer(("", port), Handler).serve_forever()
     except KeyboardInterrupt:

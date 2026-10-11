@@ -29,7 +29,7 @@
 7. Any city is a config file; Delhi and Ahmedabad are included. A new city can start from its plan PDF: Bedrock drafts the config, a validator checks it, and a person approves it.
 
 **Where AWS fits.** The project runs two ways from the same code:
-- **Build It (what the demo shows):** on one machine with no AWS account. The officer assistant and the plan-PDF reader are agents built with **Strands Agents** (AWS open source), running on a local model.
+- **Build It (what the demo shows):** on one machine with no AWS account. The officer assistant and the plan-PDF reader are agents built with **Strands Agents** (AWS open source), running on Groq or a local model.
 - **Ship It (ready to deploy):** `template.yaml` deploys the same code with **AWS SAM** (open source) to the services below.
 
 

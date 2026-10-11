@@ -270,3 +270,13 @@ def test_plan_import_route_guards(monkeypatch):
     assert api.route("POST", "/api/plan-import", {}, {"token": "t0k", "pdf_b64": huge}, st, importer=imp)["statusCode"] == 400
     ok = api.route("POST", "/api/plan-import", {}, {"token": "t0k", "pdf_b64": "JVBE"}, st, importer=imp)
     assert ok["statusCode"] == 200 and json.loads(ok["body"])["draft"]["id"] == "x"
+
+
+def test_model_provider_selection(monkeypatch):
+    from handlers import agent
+    monkeypatch.setenv("MODEL_PROVIDER", "groq")
+    monkeypatch.setenv("GROQ_API_KEY", "gsk_test")
+    m = agent.make_model()
+    assert type(m).__name__ == "OpenAIModel" and m.config["model_id"] == "openai/gpt-oss-120b"
+    monkeypatch.setenv("MODEL_PROVIDER", "ollama")
+    assert type(agent.make_model()).__name__ == "OllamaModel"
