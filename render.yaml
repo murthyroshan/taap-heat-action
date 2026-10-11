@@ -23,3 +23,6 @@ services:
         sync: false
       - key: GROQ_MODEL
         value: openai/gpt-oss-120b
+      # Render's shared IP often exceeds Open-Meteo's free daily limit; fetch through Vercel instead
+      - key: FORECAST_URL
+        value: https://taap-heat-action.vercel.app/api/forecast

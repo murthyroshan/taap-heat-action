@@ -3,13 +3,16 @@ from __future__ import annotations
 
 import base64
 import json
+import os
 import zlib
 import urllib.error
 import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
 
-FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
+# FORECAST_URL can point at a relay with the same API (see src/web/api/forecast.js) when the
+# host's shared IP is over Open-Meteo's free daily limit.
+FORECAST_URL = os.environ.get("FORECAST_URL") or "https://api.open-meteo.com/v1/forecast"
 ARCHIVE_URL = "https://archive-api.open-meteo.com/v1/archive"
 VARS = "temperature_2m,relative_humidity_2m,wind_speed_10m,shortwave_radiation,direct_radiation,surface_pressure"
 
