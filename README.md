@@ -1,6 +1,10 @@
 # Taap
 
+[![tests](https://github.com/murthyroshan/taap-heat-action/actions/workflows/ci.yml/badge.svg)](https://github.com/murthyroshan/taap-heat-action/actions/workflows/ci.yml)
+
 Taap runs a city's Heat Action Plan every hour and keeps a public record of what was done.
+
+**Live demo:** [taap-heat-action.vercel.app](https://taap-heat-action.vercel.app) · **Demo video:** [youtu.be/r-tjo3xshbw](https://youtu.be/r-tjo3xshbw) · **Blog:** [on AWS Builder Center](https://builder.aws.com/content/3KYbwoxXFGJ5ecbsHgh62DS11Jb/delhis-heat-plan-said-green-our-model-said-15-minutes-of-work-per-hour) · **Telegram bot:** [@MrTaapbot](https://t.me/MrTaapbot)
 
 India has more than 250 Heat Action Plans. Most of them are PDFs. They warn the whole city based on temperature alone, they rarely say who is most at risk, and nobody can check afterwards whether the plan was actually carried out. Taap takes a plan, turns its rules into code, and runs it:
 
@@ -11,6 +15,25 @@ India has more than 250 Heat Action Plans. Most of them are PDFs. They warn the 
 - It publishes a CAP 1.2 alert feed and printable Hindi posters for people without smartphones.
 
 Built for Environmental Hacks (Heat and Water track).
+
+### Try it in two minutes
+
+1. Open the [dashboard](https://taap-heat-action.vercel.app/dashboard), switch to **Replay** and look at 28 May 2024: every Delhi zone at band 4, and the plan's actions per department.
+2. Send `/start` to [@MrTaapbot](https://t.me/MrTaapbot), pick a language, Delhi and a zone. You get today's work and rest guidance, and buttons to report a problem at your site.
+3. Ask [Saathi](https://taap-heat-action.vercel.app/saathi) "when can I work today?" in Hindi or English.
+4. Open the [public ledger](https://taap-heat-action.vercel.app/ledger) to see planned vs done per department.
+
+The free hosting sleeps when idle, so the first request can take up to a minute.
+
+### Where AWS is used in the code
+
+| What | Where |
+|---|---|
+| Strands Agents: officer assistant with read-only tools over live state | [`src/handlers/agent.py`](src/handlers/agent.py) |
+| Strands Agents: Saathi, the workers' assistant (tools for risk, nearby help, shift plan, filing reports) | [`src/heatplan/saathi.py`](src/heatplan/saathi.py) |
+| Strands Agents: drafting a city config from a Heat Action Plan PDF | `import_plan` in [`src/handlers/agent.py`](src/handlers/agent.py) |
+| AWS SAM: EventBridge Scheduler, Lambda function URLs, DynamoDB, Polly, Bedrock | [`template.yaml`](template.yaml), checked with cfn-lint on every push |
+| Lambda handlers for the hourly run, Telegram webhook, API and agent | [`src/handlers/`](src/handlers) |
 
 ![Home](docs/screenshots/home.jpg)
 
